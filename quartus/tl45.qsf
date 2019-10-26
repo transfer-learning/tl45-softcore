@@ -102,6 +102,7 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name ENABLE_SIGNALTAP OFF
 set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
 set_global_assignment -name SLD_FILE "C:/Users/Codetector/projects/tl45-softcore/quartus/stp1_auto_stripped.stp"
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/tl45_core/tl45_decode.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/tl45_core/tl45_register_read.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/tl45_core/tl45_prefetch.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/tl45_core/tl45_dprf.sv

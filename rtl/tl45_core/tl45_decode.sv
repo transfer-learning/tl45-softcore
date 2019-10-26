@@ -67,25 +67,24 @@ wire decode_err;
 
 always @(*)
     case (opcode)
-        5'h00: decode_err = i_buf_inst != 0;                                   //  NOP
+        5'h00: decode_err = i_buf_inst != 0;                            //  NOP
         5'h01,                                                          //  ADD 
         5'h02,                                                          //  SUB
         
-        5'h05,                                                          //  CMP
         5'h06,                                                          //   OR
         5'h07,                                                          //  XOR
-        5'h08: decode_err = !ri && ((mode != 0) || (low_imm != 0));    //  AND
-        5'h09: decode_err = (mode != 0) || (low_imm != 0);             //  NOT
+        5'h08: decode_err = !ri && ((mode != 0) || (low_imm != 0));     //  AND
+        5'h09: decode_err = (mode != 0) || (low_imm != 0);              //  NOT
     
         5'h0C,                                                          //  JMP
-        5'h0D: decode_err = (mode != 3'b001);                          // CALL
-        5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)        //  RET 
+        5'h0D: decode_err = (mode != 3'b001);                           // CALL
+        5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)         //  RET 
                                 || (sr1 != 0) || (imm != 0);
-        5'h10: decode_err = (mode != 0) || (sr1 != 0);                 //   IN
-        5'h11: decode_err = (mode != 0) || (dr != 0);                  //  OUT
+        5'h10: decode_err = (mode != 0) || (sr1 != 0);                  //   IN
+        5'h11: decode_err = (mode != 0) || (dr != 0);                   //  OUT
 
         5'h14,                                                          //   LW
-        5'h15: decode_err = (mode != 3'b001);                          //   SW
+        5'h15: decode_err = (mode != 3'b001);                           //   SW
 
         default: decode_err = 1'b1;
     endcase

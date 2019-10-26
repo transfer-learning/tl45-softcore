@@ -65,7 +65,6 @@ done_led
 `endif
 	);
 
-	output wire done_led;
 output wire sdram_clk   ;
 assign sdram_clk = i_clk;
 output wire sdr_cs_n    ;

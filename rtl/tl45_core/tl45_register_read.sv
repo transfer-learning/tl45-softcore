@@ -1,3 +1,5 @@
+`default_nettype none
+
 module tl45_register_read(
     i_clk, i_reset,
     i_pipe_stall, o_pipe_stall, // If i_pipe_stall is high, don't clock buffer.
@@ -14,7 +16,6 @@ module tl45_register_read(
     // Operand Forwarding Buses
     i_of1_reg, i_of1_data,
     i_of2_reg, i_of2_data,
-
     // Output buffer from current stage
     o_opcode,
     o_dr, o_sr1, o_sr2,
@@ -56,7 +57,9 @@ assign o_dprf_read_a1 = i_sr1;
 assign o_dprf_read_a2 = i_sr2;
 
 wire ignoreDRBusy;
-assign ignoreDRBusy = (i_opcode == 5'h0C) || (i_opcode == 5'h0);
+assign ignoreDRBusy = (i_opcode == 5'h0C) // JMPs
+                    || (i_opcode == 5'h0) // NOP
+                    || (i_opcode == 5'h15); // LW
 
 // If Busy is not ignored, then it should be set
 assign o_dprf_setbusy = (ignoreDRBusy) ? (4'h0) : (i_dr);

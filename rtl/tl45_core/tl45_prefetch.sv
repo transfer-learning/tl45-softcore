@@ -117,7 +117,9 @@ end
 	if ((f_past_valid)&&(!$rose(i_clk)))
 	begin
 		assert($stable(i_reset));
-		assert($stable(i_wb_cyc));
+		assert($stable(o_wb_cyc));
+        assert($stable(o_wb_addr));
+        assert($stable(o_wb_data));
 
 		assume($stable(i_wb_ack));
 		assume($stable(i_wb_stall));

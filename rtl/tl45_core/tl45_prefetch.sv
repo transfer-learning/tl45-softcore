@@ -48,7 +48,7 @@ reg [31:0] current_pc;
 assign o_wb_addr = current_pc[31:2];
 initial current_pc = 0;
 
-enum integer { IDLE = 0, FETCH_STROBE, FETCH_WAIT_ACK, WRITE_OUT } current_state;
+enum integer { IDLE = 0, FETCH_STROBE, FETCH_WAIT_ACK, WRITE_OUT, LAST_STATE } current_state;
 initial current_state = IDLE;
 
 // STATE MACHINE
@@ -97,5 +97,32 @@ always @(*) begin
 end
 
 // Buffer: PC, Instruction
+`ifdef FORMAL
+    reg f_past_valid;
+    initial f_past_valid = 0;
+    always @(posedge i_clk)
+        f_past_valid <= 1;
+    always @(*)
+        assert(current_state < LAST_STATE);
 
+    initial assume(i_reset);
+    initial assume(!i_wb_ack);
+    initial assume(!i_wb_err);
+    initial assume(!i_wb_stall);
+
+    initial assert(!o_wb_cyc);
+    initial assert(!o_wb_stb);
+
+    always @($global_clock)
+	if ((f_past_valid)&&(!$rose(i_clk)))
+	begin
+		assert($stable(i_reset));
+		assert($stable(i_wb_cyc));
+
+		assume($stable(i_wb_ack));
+		assume($stable(i_wb_stall));
+		assume($stable(i_wb_idata));
+		assume($stable(i_wb_err));
+	end
+`endif
 endmodule

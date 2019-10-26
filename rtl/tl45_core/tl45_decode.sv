@@ -63,6 +63,21 @@ always @(*)
         default: resolved_imm = {imm, 16'b0}; // lh = 1
     endcase
 
+wire sr2_force_sp;
+assign sr2_force_sp = (opcode == 5'h0D) || (opcode == 5'h0E); // CALL and RET require sr2 == sp
+
+// SW must be re-ordered for further stages.
+// It is encoded as SW dr, sr1, imm => dr -> MEM[sr1+imm]
+// which won't be understood by operand forwarding because
+// dr is treated as a read operand.
+//
+// We fix this by moving dr into sr2 and clearing dr.
+// Further stages will execute sr2 -> MEM[sr1+imm].
+//
+wire inst_sw;
+assign inst_sw = (opcode == mode != 3'b001);
+
+
 wire decode_err;
 
 always @(*)
@@ -77,7 +92,7 @@ always @(*)
         5'h09: decode_err = (mode != 0) || (low_imm != 0);              //  NOT
     
         5'h0C,                                                          //  JMP
-        5'h0D: decode_err = (mode != 3'b001);                           // CALL
+        5'h0D: decode_err = (mode != 3'b101);                           // CALL
         5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)         //  RET 
                                 || (sr1 != 0) || (imm != 0);
         5'h10: decode_err = (mode != 0) || (sr1 != 0);                  //   IN
@@ -108,9 +123,12 @@ always @(posedge i_clk) begin
         o_buf_opcode <= opcode;
 
         o_buf_ri     <= ri;
-        o_buf_dr     <= dr;
+        o_buf_dr     <= inst_sw ? 4'b0000 : dr; // dr is moved to sr2 for SW instruction.
         o_buf_sr1    <= sr1;
-        o_buf_sr2    <= ri ? 4'b0 : sr2;
+        o_buf_sr2    <= sr2_force_sp ? 4'b1111 : // CALL/RET: sr2 <- sp
+                        (inst_sw ? dr :          //       SW: sr2 <- dr
+                        (ri ? 4'b0 :             // I/R flag: sr2 <- 0
+                        sr2));                   //     else: sr2 <- sr2  
         o_buf_imm    <= ri ? resolved_imm : 32'b0;
 
     end

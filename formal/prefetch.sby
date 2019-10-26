@@ -1,0 +1,16 @@
+[options]
+mode bmc
+depth 100
+
+[engines]
+smtbmc
+
+[script]
+read -formal tl45_prefetch.sv
+
+prep -top tl45_prefetch
+
+[files]
+../rtl/tl45_core/tl45_prefetch.sv
+
+

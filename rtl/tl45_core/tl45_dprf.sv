@@ -59,4 +59,8 @@ begin
 	end
 end
 
+`ifdef FORMAL
+
+`endif
+
 endmodule

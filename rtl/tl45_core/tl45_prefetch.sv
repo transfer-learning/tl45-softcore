@@ -47,8 +47,12 @@ end
 reg [31:0] current_pc;
 assign o_wb_addr = current_pc[31:2];
 initial current_pc = 0;
-
-enum integer { IDLE = 0, FETCH_STROBE, FETCH_WAIT_ACK, WRITE_OUT, LAST_STATE } current_state;
+localparam IDLE = 0,
+           FETCH_STROBE = 1,
+           FETCH_WAIT_ACK = 2,
+           WRITE_OUT = 3,
+           LAST_STATE = 4;
+integer current_state;
 initial current_state = IDLE;
 
 // STATE MACHINE
@@ -58,6 +62,7 @@ always @(posedge i_clk) begin
     if (i_reset) begin
         current_state <= IDLE;
         current_pc <= 0;
+        o_wb_cyc <= 0;
         o_buf_pc <= 0;
         o_buf_inst <= 0;
     end 
@@ -97,6 +102,9 @@ always @(*) begin
 end
 
 // Buffer: PC, Instruction
+
+
+
 `ifdef FORMAL
     reg f_past_valid;
     initial f_past_valid = 0;
@@ -113,18 +121,36 @@ end
     initial assert(!o_wb_cyc);
     initial assert(!o_wb_stb);
 
-    always @($global_clock)
-	if ((f_past_valid)&&(!$rose(i_clk)))
-	begin
-		assert($stable(i_reset));
-		assert($stable(o_wb_cyc));
-        assert($stable(o_wb_addr));
-        assert($stable(o_wb_data));
+    always @(posedge i_clk) begin
+        if ($past(i_reset)) begin
+            assert(current_state == IDLE); // We Can Reset
+        end
+    end
 
-		assume($stable(i_wb_ack));
-		assume($stable(i_wb_stall));
-		assume($stable(i_wb_idata));
-		assume($stable(i_wb_err));
-	end
+    always @(*)
+        if (current_state == IDLE) begin
+            assert(!o_wb_cyc);
+            assert(!o_wb_stb);
+        end
+
+    always @(*) begin
+        if(o_wb_stb)
+            assert(o_wb_cyc);
+    end
+
+    always @(*) begin
+        if (current_state == FETCH_STROBE || current_state == FETCH_WAIT_ACK)
+            assert(o_wb_cyc);
+    end
+
+    always @(posedge i_clk) begin
+        if (f_past_valid && $past(o_wb_stb))
+            assert(!o_wb_stb); // Assert stb will only last one clock
+    end
+
+    always @(*) begin
+        if ((current_state == FETCH_STROBE || current_state == FETCH_WAIT_ACK) && i_wb_stall)
+            assert(o_wb_cyc);
+    end
 `endif
 endmodule

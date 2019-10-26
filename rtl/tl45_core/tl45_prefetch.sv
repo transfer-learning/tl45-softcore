@@ -3,7 +3,7 @@
 module tl45_prefetch(
     i_clk, i_reset,
     i_pipe_stall,
-    i_new_pc, i_pc
+    i_new_pc, i_pc,
     // Wishbone stuff
     o_wb_cyc, o_wb_stb, o_wb_we,
     o_wb_addr, o_wb_data, o_wb_sel,

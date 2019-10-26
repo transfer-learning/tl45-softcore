@@ -60,18 +60,22 @@ always @(posedge i_clk) begin
         current_pc <= 0;
         o_buf_pc <= 0;
         o_buf_inst <= 0;
-    end else 
-    if ((current_state == IDLE) && (!i_wb_stall)) // IDLE && Wishbone not stalled
+    end 
+    else if ((current_state == IDLE) && (!i_wb_stall)) begin // IDLE && Wishbone not stalled
         current_state <= FETCH_STROBE;
+        o_wb_cyc <= 1'b1;
+    end
     else if (current_state == FETCH_STROBE)
         current_state <= FETCH_WAIT_ACK;
     else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err)) begin // ACK with data
         current_pc <= current_pc + 4; // PC Increment
         o_buf_pc <= current_pc; // Load PC into buf
         o_buf_inst <= i_wb_data;
+        o_wb_cyc <= 1'b0;
         current_state <= WRITE_OUT;
     end
     else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (i_wb_err)) begin // ACK With Error
+        o_wb_cyc <= 1'b0;
         current_state <= IDLE;
     end
     else if ((current_state == WRITE_OUT) && (!i_pipe_stall)) begin
@@ -84,11 +88,9 @@ end
 always @(*) begin
     case(current_state)
         FETCH_STROBE: begin
-            o_wb_cyc = 1;
             o_wb_stb = 1;
         end
         default: begin
-            o_wb_cyc = 0;
             o_wb_stb = 0;
         end
     endcase

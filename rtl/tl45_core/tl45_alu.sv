@@ -11,6 +11,8 @@ module tl45_alu(
     i_sr1_val, i_sr2_val,
     i_target_offset,
     i_pc,
+    // Operand Forward Outputs
+    o_of_reg, o_of_val,
     // Current stage buffer
     o_dr, o_value, o_ld_newpc, o_br_pc
 );
@@ -34,6 +36,10 @@ input wire [3:0] i_dr;
 input wire [31:0] i_sr1_val, i_sr2_val,
                   i_target_offset, i_pc;
 input wire [3:0] i_jmp_cond;
+
+// Operand Forward
+output wire [3:0] o_of_reg;
+output wire [31:0] o_of_val;
 
 // Output to Next Stage
 output reg [31:0] o_value;
@@ -191,6 +197,8 @@ always @(posedge i_clk) begin
     end 
 end
 
+assign o_of_reg = i_dr;
+assign o_of_val = alu_result;
 
 `ifdef FORMAL
 

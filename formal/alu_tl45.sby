@@ -2,7 +2,7 @@
 mode prove
 
 [engines]
-smtbmc
+smtbmc yices
 
 [script]
 read -formal tl45_alu.sv

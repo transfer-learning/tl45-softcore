@@ -3,6 +3,7 @@
 module tl45_memory(
     i_clk, i_reset,
     i_pipe_stall, o_pipe_stall,
+    i_pipe_flush, o_pipe_flush,
 
     // Wishbone
     o_wb_cyc, o_wb_stb, o_wb_we,
@@ -14,13 +15,18 @@ module tl45_memory(
     i_buf_opcode,
     i_buf_dr, i_buf_sr1_val, i_buf_sr2_val, i_buf_imm,
 
-    // Buffer Out and Forwarding
-    o_buf_dr, o_buf_val,
+    // Forwarding
+    o_fwd_dr, o_fwd_val,
+
+    // Buffer Out
+    o_buf_dr, o_buf_val
 );
 
 input wire i_clk, i_reset;
 input wire i_pipe_stall;
 output reg o_pipe_stall;
+input wire i_pipe_flush;
+output reg o_pipe_flush;
 
 // Wishbone 
 output reg o_wb_cyc, o_wb_stb, o_wb_we;
@@ -42,6 +48,14 @@ input wire [31:0] i_wb_data;
 input wire [4:0] i_buf_opcode;
 input wire [3:0] i_buf_dr;
 input wire [31:0] i_buf_sr1_val, i_buf_sr2_val, i_buf_imm;
+
+// Forwarding
+output reg [3:0] o_fwd_dr;
+output reg [31:0] o_fwd_val;
+initial begin
+    o_fwd_dr = 0;
+    o_fwd_val = 0;
+end
 
 // Buffer Out
 output reg [3:0] o_buf_dr;
@@ -126,11 +140,27 @@ assign internal_stall = (current_state != IDLE) && (current_state != READ_STALLE
 
 reg [31:0] temp_read;
 
+assign o_pipe_flush = i_pipe_flush;
+
+always @(*)
+    case (current_state)
+        READ_STALLED_OUT: begin
+            o_fwd_dr = !is_write ? i_buf_dr : 0;
+            o_fwd_val = !is_write ? temp_read : 0;
+        end
+        READ_WAIT_ACK: begin
+            o_fwd_dr = !i_pipe_stall ? i_buf_dr : 0;
+            o_fwd_val = !i_pipe_stall ? (i_wb_err ? 32'h13371337 : i_wb_data) : 0;
+        end
+        default: begin
+            o_fwd_dr = 0;
+            o_fwd_val = 0;
+        end
+    endcase
 
 always @(posedge i_clk) begin
-    if (i_reset) begin
+    if (i_reset || i_pipe_flush) begin // TODO i_pipe_flush not handled properly
         current_state <= IDLE;
-        o_pipe_stall <= 0;
 
         o_wb_addr <= 0;
         o_wb_data <= 0;
@@ -147,7 +177,7 @@ always @(posedge i_clk) begin
         o_wb_sel <= 4'b1111;
         
         if (is_write)
-            o_wb_data <= wr_data;
+            o_wb_data <= wr_val;
     end
     else if (state_strobe && !i_wb_stall) begin
         current_state <= current_state == READ_STROBE ? READ_WAIT_ACK : WRITE_WAIT_ACK;
@@ -200,6 +230,6 @@ end
 
 
 
-endmodule
+endmodule : tl45_memory
 
 

@@ -133,7 +133,7 @@ always @(posedge i_clk) begin
                         (inst_sw ? dr :          //       SW: sr2 <- dr
                         (ri ? 4'b0 :             // I/R flag: sr2 <- 0
                         sr2));                   //     else: sr2 <- sr2  
-        o_buf_imm    <= ri ? resolved_imm : 32'b0;
+        o_buf_imm    <= resolved_imm; // ri ? resolved_imm : 32'b0;
 
     end
 end

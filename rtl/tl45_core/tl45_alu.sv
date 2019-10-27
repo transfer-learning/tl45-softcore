@@ -197,8 +197,8 @@ always @(posedge i_clk) begin
     end 
 end
 
-assign o_of_reg = i_dr;
-assign o_of_val = alu_result;
+assign o_of_reg = alu_op == ALUOP_NOP ? 0 : i_dr;
+assign o_of_val = alu_op == ALUOP_NOP ? 0 : alu_result;
 
 `ifdef FORMAL
 

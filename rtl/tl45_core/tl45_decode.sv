@@ -3,6 +3,7 @@
 module tl45_decode(
     i_clk, i_reset,
     i_pipe_stall, o_pipe_stall,
+    i_pipe_flush, o_pipe_flush,
 
     // Buffer In
     i_buf_pc, i_buf_inst,
@@ -20,6 +21,8 @@ module tl45_decode(
 input wire i_clk, i_reset;
 input wire i_pipe_stall;
 output reg o_pipe_stall;
+input wire i_pipe_flush;
+output reg o_pipe_flush;
 initial o_pipe_stall = 0;
 
 input wire [31:0] i_buf_pc, i_buf_inst;
@@ -54,7 +57,7 @@ assign sr2 = i_buf_inst[19:16];
 assign mode = {ri, lh, zs};
 
 
-wire [31:0] resolved_imm;
+reg [31:0] resolved_imm;
 
 always @(*)
     case ({lh, zs})
@@ -75,10 +78,10 @@ assign sr2_force_sp = (opcode == 5'h0D) || (opcode == 5'h0E); // CALL and RET re
 // Further stages will execute sr2 -> MEM[sr1+imm].
 //
 wire inst_sw;
-assign inst_sw = (opcode == mode != 3'b001);
+assign inst_sw = (opcode == 5'h15);
 
 
-wire decode_err;
+reg decode_err;
 
 always @(*)
     case (opcode)
@@ -104,9 +107,10 @@ always @(*)
         default: decode_err = 1'b1;
     endcase
 
+assign o_pipe_flush = i_pipe_flush;
 
 always @(posedge i_clk) begin
-    if (i_reset || (decode_err && !i_pipe_stall)) begin
+    if (i_reset || i_pipe_flush || (decode_err && !i_pipe_stall)) begin
         o_pipe_stall <= 0;
         o_buf_pc     <= 0;
         o_buf_opcode <= 0;

@@ -121,13 +121,13 @@ end
 // Combinational Logic for calculating opt_b_2comp
 // 2 complement is computed if op==subtract
 always @(*) begin
-    {carry_value, opt_b_2complement} = (alu_op == ALUOP_SUB) ? (~i_sr2_val + 1) : i_sr2_val;
+    opt_b_2complement = (alu_op == ALUOP_SUB) ? (~i_sr2_val + 1) : i_sr2_val;
 end
 
 // Main ALU
 always @(*) begin
     case(alu_op)
-        ALUOP_ADD, ALUOP_SUB: alu_result = i_sr1_val + opt_b_2complement;
+        ALUOP_ADD, ALUOP_SUB: {carry_value, alu_result} = i_sr1_val + opt_b_2complement;
         ALUOP_AND: alu_result = i_sr1_val & i_sr2_val;
         ALUOP_OR: alu_result = i_sr1_val | i_sr2_val;
         ALUOP_XOR: alu_result = i_sr1_val ^ i_sr2_val;

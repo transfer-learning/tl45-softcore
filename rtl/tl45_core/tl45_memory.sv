@@ -94,12 +94,18 @@ assign mem_addr = is_io ? {16'hff, i_buf_imm[13:0], 2'b00} : (i_buf_sr1_val + i_
 wire [31:0] wr_val;
 assign wr_val = is_io ? i_buf_sr1_val : i_buf_sr2_val;
 
-enum integer { 
+localparam
     IDLE = 0,
-     READ_STROBE,  READ_WAIT_ACK, READ_STALLED_OUT, READ_OUT,
-    WRITE_STROBE, WRITE_WAIT_ACK,
-    LAST_STATE 
-} current_state; 
+    READ_STROBE = 1,
+    READ_WAIT_ACK = 2,
+    READ_STALLED_OUT = 3,
+    READ_OUT = 4,
+    WRITE_STROBE = 5,
+    WRITE_WAIT_ACK = 6,
+    LAST_STATE = 7;
+
+reg [3:0] current_state;
+initial current_state = IDLE;
 
 // wishbone combinational control signals
 assign o_wb_stb = (current_state == READ_STROBE) || (current_state == WRITE_STROBE);

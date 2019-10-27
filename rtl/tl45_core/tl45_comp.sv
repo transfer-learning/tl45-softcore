@@ -1,8 +1,8 @@
 `default_nettype none
 
-// `define VERILATOR
+`define DO_INCLUDE
 
-`ifdef VERILATOR
+`ifdef DO_INCLUDE
 
 `include "tl45_dprf.sv"
 `include "tl45_nofetch.sv"
@@ -10,6 +10,7 @@
 `include "tl45_register_read.sv"
 `include "tl45_alu.sv"
 `include "tl45_writeback.sv"
+`include "tl45_memory.sv"
 
 `endif
 
@@ -19,7 +20,7 @@ module tl45_comp(
     inst_decode_err
 );
     input wire i_clk, i_reset;
-    output wire decode_err;
+    output wire inst_decode_err;
 
     // fetch buffer
     wire [31:0] fetch_buf_pc, fetch_buf_inst;
@@ -77,8 +78,9 @@ module tl45_comp(
         .i_clk(i_clk),
         .i_reset(i_reset),
         .i_pipe_stall(stall_fetch_decode),
-        .i_new_pc(0),
-        .i_pc(0),
+        .i_pipe_flush(flush_fetch_decode),
+        .i_new_pc(alu_buf_ld_newpc),
+        .i_pc(alu_buf_br_pc),
         .o_buf_pc(fetch_buf_pc),
         .o_buf_inst(fetch_buf_inst)
     );
@@ -88,6 +90,8 @@ module tl45_comp(
         .i_reset(i_reset),
         .o_pipe_stall(stall_fetch_decode),
         .i_pipe_stall(stall_decode_rr),
+        .o_pipe_flush(flush_fetch_decode),
+        .i_pipe_flush(flush_decode_rr),
 
         .i_buf_pc(fetch_buf_pc),
         .i_buf_inst(fetch_buf_inst),
@@ -100,7 +104,7 @@ module tl45_comp(
         .o_buf_sr2(decode_buf_sr2),
         .o_buf_imm(decode_buf_imm),
 
-        .o_decode_err(decode_err)
+        .o_decode_err(inst_decode_err)
     );
 
     tl45_register_read rr(
@@ -118,6 +122,11 @@ module tl45_comp(
         .i_sr2(decode_buf_sr2),
         .i_imm32(decode_buf_imm),
         .i_pc(decode_buf_pc),
+
+        .o_dprf_read_a1(dprf_reg1),
+        .o_dprf_read_a2(dprf_reg2),
+        .i_dprf_d1(dprf_reg1_val),
+        .i_dprf_d2(dprf_reg2_val),
 
         .i_of1_reg(of1_reg),
         .i_of1_data(of1_val),
@@ -149,14 +158,14 @@ module tl45_comp(
         .i_target_offset(rr_buf_target_address_offset),
         .i_pc(rr_buf_pc),
 
+        .o_of_reg(of1_reg),
+        .o_of_val(of1_val),
+
         .o_dr(alu_buf_dr),
         .o_value(alu_buf_value),
         .o_ld_newpc(alu_buf_ld_newpc),
         .o_br_pc(alu_buf_br_pc)
     );
-
-    assign of1_reg = alu_buf_dr;
-    assign of1_val = alu_buf_value;
 
     tl45_writeback writeback(
         .i_clk(i_clk),
@@ -174,7 +183,5 @@ module tl45_comp(
         .o_rf_val(dprf_wreg_val)
     );
 
-
-
-endmodule : tl45_comp
+endmodule
 

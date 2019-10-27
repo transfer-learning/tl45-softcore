@@ -16,25 +16,25 @@ reg [31:0] registers[15];
 
 initial begin
 	for (integer i = 0; i < 15; i++)
-		registers[i] <= 0;
+		registers[i] = 0;
 end
 
 // Read Port 1 selection
 always @(negedge clk) // TODO Maybe?
 begin
 	if (readAdd1 == 0)
-		dataO1 = 0;
+		dataO1 <= 0;
 	else
-		dataO1 = registers[readAdd1 - 1];
+		dataO1 <= registers[readAdd1 - 1];
 end
 
 // Read Port 2 selection
 always @(negedge clk)
 begin
 	if (readAdd2 == 0)
-		dataO2 = 0;
+		dataO2 <= 0;
 	else
-		dataO2 = registers[readAdd2 - 1];
+		dataO2 <= registers[readAdd2 - 1];
 end
 
 // Write

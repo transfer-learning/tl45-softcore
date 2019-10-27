@@ -11,6 +11,7 @@
 `include "tl45_alu.sv"
 `include "tl45_writeback.sv"
 `include "tl45_memory.sv"
+`include "memdev.v"
 
 `endif
 
@@ -231,6 +232,22 @@ module tl45_comp(
         .o_rf_reg(dprf_wreg),
         .o_rf_val(dprf_wreg_val)
     );
+
+
+    memdev #(16) my_mem(
+        .i_clk(i_clk),
+        .i_wb_cyc(o_wb_cyc),
+        .i_wb_stb(o_wb_stb),
+        .i_wb_we(o_wb_we),
+        .i_wb_addr(o_wb_addr[15-2:0]),
+        .i_wb_data(o_wb_data),
+        .i_wb_sel(o_wb_sel),
+
+        .o_wb_ack(i_wb_ack),
+        .o_wb_stall(i_wb_stall),
+        .o_wb_data(i_wb_data)
+    );
+
 
     // Misc
 

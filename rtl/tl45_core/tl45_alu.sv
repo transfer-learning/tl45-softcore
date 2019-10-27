@@ -183,7 +183,7 @@ assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
 always @(posedge i_clk) begin
-    if (is_branch) begin
+    if (is_branch || alu_op == ALUOP_NOP) begin
         // Branch Logic
         o_dr <= 4'h0; // Branch never writes to DR
         o_value <= 0;
@@ -245,4 +245,4 @@ end
 
 `endif
 
-endmodule
+endmodule : tl45_alu

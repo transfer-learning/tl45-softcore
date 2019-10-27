@@ -18,7 +18,7 @@ module tl45_register_read(
     i_of2_reg, i_of2_data, // Operand Forwarding Bus #2 AT ALU BUF
     // Output buffer from current stage
     o_opcode,
-    o_dr, o_flags,
+    o_dr, o_jmp_cond,
     o_sr1_val, o_sr2_val,
     o_target_address_offset,
     o_pc
@@ -44,7 +44,7 @@ input wire [31:0] i_of1_data, i_of2_data;
 // Stage Buffer
 output reg [4:0] o_opcode;
 output reg [3:0] o_dr;
-output reg [3:0] o_flags;
+output reg [3:0] o_jmp_cond;
 output reg [31:0] o_sr1_val, o_sr2_val, o_pc;
 output reg [31:0] o_target_address_offset; // Target Jump Address Offset
 
@@ -54,7 +54,7 @@ initial begin
     o_sr1_val = 0;
     o_sr2_val = 0;
     o_pc = 0;
-    o_flags = 0;
+    o_jmp_cond = 0;
     o_target_address_offset = 0;
 end
 
@@ -85,10 +85,10 @@ always @(posedge i_clk) begin
         o_pc <= i_pc;
         if (is_branch) begin
             o_dr <= 4'h0;
-            o_flags <= i_dr;
+            o_jmp_cond <= i_dr;
         end else begin
             o_dr <= i_dr;
-            o_flags <= 4'h0;
+            o_jmp_cond <= 4'h0;
         end
         // SR1 Operand Forwarding Checking
         // LOGIC:

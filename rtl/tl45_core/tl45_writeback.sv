@@ -25,6 +25,10 @@ input wire [31:0] i_buf_val;
 output reg [3:0] o_fwd_reg;
 output reg [31:0] o_fwd_val;
 
+output reg o_rf_en;
+output reg [3:0] o_rf_reg;
+output reg [31:0] o_rf_val;
+
 assign o_pipe_stall = 0;
 
 initial begin
@@ -41,6 +45,7 @@ always @(posedge i_clk) begin
         o_rf_en   <= 0;
         o_rf_reg  <= 0;
         o_rf_val  <= 0;
+    end
     else begin
         o_fwd_reg <= i_buf_dr;
         o_fwd_val <= i_buf_val;
@@ -51,6 +56,6 @@ always @(posedge i_clk) begin
     end
 end
 
-endmodule
+endmodule : tl45_writeback
 
 

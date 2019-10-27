@@ -148,8 +148,10 @@ always @(posedge i_clk) begin
     if (f_past_valid && !$past(i_pipe_flush) && !$past(i_pipe_stall) && !$past(i_reset)) begin
         assert ($past(i_opcode) == o_opcode);
         assert ($past(i_imm32) == o_target_address_offset);
-        if ($past(is_branch))
-            assert(o_flags == $past(i_dr));
+        if ($past(is_branch)) begin
+            assert(o_jmp_cond == $past(i_dr));
+            assert(o_dr == 4'h0);
+        end
         else
             assert (o_dr == $past(i_dr));
     end

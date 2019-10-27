@@ -3,6 +3,7 @@
 module tl45_prefetch(
     i_clk, i_reset,
     i_pipe_stall,
+    i_pipe_flush,
     i_new_pc, i_pc,
     // Wishbone stuff
     o_wb_cyc, o_wb_stb, o_wb_we,
@@ -14,19 +15,19 @@ module tl45_prefetch(
 );
 
 input wire i_clk, i_reset; // Sys CLK, Reset
-input wire i_pipe_stall; // Stall
+input wire i_pipe_stall, i_pipe_flush; // Stall, Flush
 
 // PC Override stuff
 input wire i_new_pc;
 input wire [31:0] i_pc;
 
 // Wishbone
-output reg o_wb_cyc, o_wb_stb, o_wb_we;
+output reg o_wb_stb, o_wb_we;
+output wire o_wb_cyc;
 output wire [29:0] o_wb_addr; // WB Address
 output reg [31:0] o_wb_data; // WB Data
 output reg [3:0]  o_wb_sel; // WB Byte Sel (One hot)
 initial begin
-    o_wb_cyc = 0;
     o_wb_stb = 0;
     o_wb_we = 0;
     o_wb_sel = 0;
@@ -59,29 +60,34 @@ initial current_state = IDLE;
 // IDLE -> FETCH_STROBE -> FETCH_WAIT_ACK -> WRITE_OUT ->(Clear Local Buffer) IDLE
 
 always @(posedge i_clk) begin
-    if (i_reset) begin
+    if (i_reset) begin // STALL
         current_state <= IDLE;
         current_pc <= 0;
-        o_wb_cyc <= 0;
         o_buf_pc <= 0;
         o_buf_inst <= 0;
     end 
+    else if (i_pipe_flush || i_new_pc) begin // FLUSH 
+        current_state <= IDLE;
+        o_buf_pc <= 0;
+        o_buf_inst <= 0;
+        if (i_new_pc)
+            current_pc <= i_pc;
+    end
     else if ((current_state == IDLE) && (!i_wb_stall)) begin // IDLE && Wishbone not stalled
         current_state <= FETCH_STROBE;
-        o_wb_cyc <= 1'b1;
     end
     else if (current_state == FETCH_STROBE)
         current_state <= FETCH_WAIT_ACK;
-    else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err)) begin // ACK with data
+    else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin // not stall, and ack & no error
         current_pc <= current_pc + 4; // PC Increment
         o_buf_pc <= current_pc; // Load PC into buf
         o_buf_inst <= i_wb_data;
-        o_wb_cyc <= 1'b0;
         current_state <= WRITE_OUT;
     end
     else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (i_wb_err)) begin // ACK With Error
-        o_wb_cyc <= 1'b0;
         current_state <= IDLE;
+        o_buf_pc <= 0;
+        o_buf_inst <= 0;
     end
     else if ((current_state == WRITE_OUT) && (!i_pipe_stall)) begin
         o_buf_inst <= 0;
@@ -89,6 +95,9 @@ always @(posedge i_clk) begin
         current_state <= IDLE;
     end
 end
+
+assign o_wb_cyc = current_state == FETCH_STROBE 
+                ||current_state == FETCH_WAIT_ACK;
 
 always @(*) begin
     case(current_state)
@@ -118,8 +127,13 @@ end
     initial assume(!i_wb_err);
     initial assume(!i_wb_stall);
 
-    initial assert(!o_wb_cyc);
-    initial assert(!o_wb_stb);
+    initial assert(current_state == IDLE);// Let's start in idle
+
+    always @(*) begin // Stall then NoAck / Err
+        if (i_wb_stall)
+            assume(!i_wb_err);
+            assume(!i_wb_ack);
+    end
 
     always @(posedge i_clk) begin
         if ($past(i_reset)) begin
@@ -128,20 +142,56 @@ end
     end
 
     always @(*)
-        if (current_state == IDLE) begin
+        if (current_state == IDLE) begin // When we idle, we dont have anything raised
             assert(!o_wb_cyc);
             assert(!o_wb_stb);
         end
 
-    always @(*) begin
+    always @(*) begin // Strobe always comes with cycle
         if(o_wb_stb)
             assert(o_wb_cyc);
     end
 
+    always @(*)
+        if (i_wb_err) // Err always comes with ack
+            assume(i_wb_ack);
+
     always @(*) begin
         if (current_state == FETCH_STROBE || current_state == FETCH_WAIT_ACK)
-            assert(o_wb_cyc);
+            assert(o_wb_cyc); // From Strobe to ACK we should cycle
     end
+
+    always @(posedge i_clk) 
+    if (f_past_valid) begin
+        if (($past(i_pipe_flush) || $past(i_new_pc)) && !$past(i_reset)) begin // IF flush / load new pc then clear
+            assert(o_buf_pc == 0);
+            assert(o_buf_inst == 0);
+            assert(current_state == IDLE);
+            if ($past(i_new_pc)) begin // new PC loads pc
+                assert(current_pc == $past(i_pc));
+            end else // flush preserves pc
+                assert(current_pc == $past(current_pc));
+        end
+    end
+
+    always @(posedge i_clk)
+        if (f_past_valid) begin
+            // IF error, we should retry
+            if (($past(current_state) == FETCH_WAIT_ACK) && $past(i_wb_err)) begin
+                assert(current_state == IDLE);
+                assert(current_pc == $past(current_pc));
+                assert(o_buf_pc == 0);
+                assert(o_buf_inst == 0);
+            end
+        end
+    
+    always @(posedge i_clk)
+        if (f_past_valid) begin // IF Success, we should see past pc in current buf, and pc should +4
+            if (current_state == WRITE_OUT) begin
+                assert(o_buf_pc == $past(current_pc));
+                assert(current_pc == $past(current_pc + 4));
+            end         
+        end
 
     always @(posedge i_clk) begin
         if (f_past_valid && $past(o_wb_stb))

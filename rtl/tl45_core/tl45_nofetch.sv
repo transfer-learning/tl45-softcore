@@ -49,10 +49,13 @@ module tl45_nofetch(
             // ADDI r1, r0, 1  :  0d 10 00 01
             // ADD r1, r1, r1  :  08 11 10 00
             case (current_pc[31:2])
-                0: o_buf_inst <= 32'h0d100001;
+                0: o_buf_inst <= 32'h0d106969;
 
-                1: o_buf_inst <= 32'b01100101111100000000000000000000; // JMP 0
-                default: o_buf_inst <= 32'h08111000; // ADD r1, r1, r1
+                // 1: o_buf_inst <= 32'b01100101111100000000000000000000; // JMP 0
+                1: o_buf_inst <= 32'b10101001000100000100001001000010;
+                2: o_buf_inst <= 32'b10100001001000000100001001000010;
+                3: o_buf_inst <= 32'b10100001001100000100001001000011;
+                default: o_buf_inst <= 0; // 32'h08111000; // ADD r1, r1, r1
             endcase
 
         end

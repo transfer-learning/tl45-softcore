@@ -150,7 +150,7 @@ always @(posedge i_clk) begin
         assert ($past(i_imm32) == o_target_address_offset);
         if ($past(is_branch)) begin
             assert(o_jmp_cond == $past(i_dr));
-            assert(o_dr == 4'h0);
+            assert(o_dr == 5'h0);
         end
         else
             assert (o_dr == $past(i_dr));

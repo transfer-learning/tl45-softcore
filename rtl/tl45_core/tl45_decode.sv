@@ -106,7 +106,7 @@ always @(*)
 
 
 always @(posedge i_clk) begin
-    if (i_reset || decode_err) begin
+    if (i_reset || (decode_err && !i_pipe_stall)) begin
         o_pipe_stall <= 0;
         o_buf_pc     <= 0;
         o_buf_opcode <= 0;
@@ -133,6 +133,45 @@ always @(posedge i_clk) begin
 
     end
 end
+
+`ifdef FORMAL
+    initial restrict(i_reset);
+
+    reg f_past_valid;
+
+    initial f_past_valid = 1'b0;
+    always @(posedge i_clk)
+        f_past_valid <= 1'b1;
+
+    always @(posedge i_clk)
+    begin
+        
+        if (f_past_valid && !$past(i_reset) && $past(o_pipe_stall)) begin
+            assume($past(i_buf_pc) == i_buf_pc);
+            assume($past(i_buf_inst) == i_buf_inst);
+        end
+
+        if (f_past_valid && !$past(i_reset) && $past(i_pipe_stall)) begin
+
+            assert($past(o_buf_pc) == o_buf_pc);
+            assert($past(o_buf_opcode) == o_buf_opcode);
+            assert($past(o_buf_ri) == o_buf_ri);
+            assert($past(o_buf_dr) == o_buf_dr);
+            assert($past(o_buf_sr1) == o_buf_sr1);
+            assert($past(o_buf_sr2) == o_buf_sr2);
+            assert($past(o_buf_imm) == o_buf_imm);
+        end
+
+        if (f_past_valid && $past(i_reset)) begin
+            assert({o_buf_pc, o_buf_opcode, o_buf_ri, o_buf_dr, o_buf_sr1, o_buf_sr2, o_buf_imm, o_decode_err} == 0);
+        end
+
+
+    end
+
+
+`endif
+
 
 endmodule
 

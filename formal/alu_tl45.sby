@@ -1,0 +1,15 @@
+[options]
+mode prove
+
+[engines]
+smtbmc
+
+[script]
+read -formal tl45_alu.sv
+
+prep -top tl45_alu
+
+[files]
+../rtl/tl45_core/tl45_alu.sv
+
+

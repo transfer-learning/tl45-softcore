@@ -18,7 +18,7 @@ module tl45_register_read(
     i_of2_reg, i_of2_data, // Operand Forwarding Bus #2 AT ALU BUF
     // Output buffer from current stage
     o_opcode,
-    o_dr,
+    o_dr, o_flags,
     o_sr1_val, o_sr2_val,
     o_target_address_offset,
     o_pc
@@ -44,6 +44,7 @@ input wire [31:0] i_of1_data, i_of2_data;
 // Stage Buffer
 output reg [4:0] o_opcode;
 output reg [3:0] o_dr;
+output reg [3:0] o_flags;
 output reg [31:0] o_sr1_val, o_sr2_val, o_pc;
 output reg [31:0] o_target_address_offset; // Target Jump Address Offset
 
@@ -53,6 +54,7 @@ initial begin
     o_sr1_val = 0;
     o_sr2_val = 0;
     o_pc = 0;
+    o_flags = 0;
     o_target_address_offset = 0;
 end
 
@@ -64,6 +66,9 @@ assign o_pipe_flush = i_pipe_flush;
 // DPRF Reading Stuff
 assign o_dprf_read_a1 = i_sr1;
 assign o_dprf_read_a2 = i_sr2;
+
+wire is_branch;
+assign is_branch = i_opcode == 5'h0C;
 
 always @(posedge i_clk) begin
     if (i_reset || i_pipe_flush) begin
@@ -78,7 +83,13 @@ always @(posedge i_clk) begin
         o_target_address_offset <= i_imm32;
         o_opcode <= i_opcode;
         o_pc <= i_pc;
-        o_dr <= i_dr;
+        if (is_branch) begin
+            o_dr <= 4'h0;
+            o_flags <= i_dr;
+        end else begin
+            o_dr <= i_dr;
+            o_flags <= 4'h0;
+        end
         // SR1 Operand Forwarding Checking
         // LOGIC:
         // -> 1) if OpFwdBus1 has the register value, load that
@@ -137,7 +148,10 @@ always @(posedge i_clk) begin
     if (f_past_valid && !$past(i_pipe_flush) && !$past(i_pipe_stall) && !$past(i_reset)) begin
         assert ($past(i_opcode) == o_opcode);
         assert ($past(i_imm32) == o_target_address_offset);
-        assert ($past(i_dr) == o_dr);
+        if ($past(is_branch))
+            assert(o_flags == $past(i_dr));
+        else
+            assert (o_dr == $past(i_dr));
     end
 end
 

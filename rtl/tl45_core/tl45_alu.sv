@@ -16,6 +16,18 @@ input wire i_clk, i_reset;
 input wire i_pipe_stall, i_pipe_flush;
 output wire o_pipe_flush, o_pipe_stall;
 
+reg stall_previous_stage;
+reg flush_previous_stage;
+initial begin
+    stall_previous_stage = 0;
+    flush_previous_stage = 0;
+end
+
+// Flush Previous Stages when 1) we stall OR Upper stage stalls
+assign o_pipe_stall = i_pipe_stall || stall_previous_stage;
+// Same with flush
+assign o_pipe_flush = flush_previous_stage || i_pipe_flush;
+
 
 
 endmodule

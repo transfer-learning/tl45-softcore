@@ -9,10 +9,7 @@ module tl45_dprf(
 	input wire clk,
 	input wire reset,
 	output reg [31:0] dataO1,
-	output reg [31:0] dataO2,
-    input reg [3:0] setBusy,
-    input reg [3:0] clearBusy,
-    output reg [14:0] regBusy
+	output reg [31:0] dataO2
 );
 
 reg [31:0] registers[15];
@@ -20,13 +17,6 @@ reg [31:0] registers[15];
 initial begin
 	for (integer i = 0; i < 15; i++)
 		registers[i] <= 0;
-end
-
-always @(posedge clk) begin
-    if (setBusy != 0)
-        regBusy[setBusy - 1] <= 1;
-    if ((setBusy != clearBusy) && (clearBusy != 0))
-        regBusy[clearBusy - 1] <= 0;
 end
 
 // Read Port 1 selection

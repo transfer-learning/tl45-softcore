@@ -78,6 +78,18 @@ fwb_slave  #(.DW(32), .AW(30),
         o_wb_ack, o_wb_stall, o_wb_data, 0,
         f_wb_nreqs, f_wb_nacks, f_wb_outstanding);
 
+always @(*)
+    assert(current_state < LAST_STATE);
+
+always @(posedge i_clk)
+if (f_past_valid) begin
+    if (!$past(i_reset) && $past(i_wb_we) && $past(i_wb_cyc) && $past(i_wb_stb))
+        assert(internal_data == $past(i_wb_data));
+    else if ($past(i_reset))
+        assert(internal_data == 32'h0);
+    else
+        assert(internal_data == $past(internal_data));
+end
 
 `endif
 endmodule

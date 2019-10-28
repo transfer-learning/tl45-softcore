@@ -73,10 +73,10 @@ always @(posedge i_clk) begin
         if (i_new_pc)
             current_pc <= i_pc;
     end
-    else if ((current_state == IDLE) && (!i_wb_stall)) begin // IDLE && Wishbone not stalled
+    else if ((current_state == IDLE)) begin // IDLE && Wishbone not stalled
         current_state <= FETCH_STROBE;
     end
-    else if (current_state == FETCH_STROBE)
+    else if (current_state == FETCH_STROBE && !i_wb_stall)
         current_state <= FETCH_WAIT_ACK;
     else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin // not stall, and ack & no error
         current_pc <= current_pc + 4; // PC Increment

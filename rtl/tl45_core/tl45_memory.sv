@@ -10,7 +10,7 @@ module tl45_memory(
     o_wb_addr, o_wb_data, o_wb_sel,
     i_wb_ack, i_wb_stall, i_wb_err,
     i_wb_data,
-    
+
     // Buffer In
     i_buf_opcode,
     i_buf_dr, i_buf_sr1_val, i_buf_sr2_val, i_buf_imm,
@@ -135,8 +135,17 @@ wire state_strobe, state_wait_ack;
 assign state_strobe = (current_state == READ_STROBE) || (current_state == WRITE_STROBE);
 assign state_wait_ack = (current_state == READ_WAIT_ACK) || (current_state == WRITE_WAIT_ACK);
 
-
-assign internal_stall = (current_state != IDLE) && (current_state != READ_STALLED_OUT) && (current_state != READ_OUT);
+always @(*)
+    case (current_state)
+        IDLE: internal_stall = start_tx;
+        READ_STROBE,
+        WRITE_STROBE: internal_stall = 1;
+        READ_WAIT_ACK,
+        WRITE_WAIT_ACK: internal_stall = i_wb_stall || !i_wb_ack;
+        READ_STALLED_OUT: internal_stall = 1;
+        READ_OUT: internal_stall = 0;
+        default: internal_stall = 1;
+    endcase
 
 reg [31:0] temp_read;
 
@@ -169,20 +178,20 @@ always @(posedge i_clk) begin
         o_buf_dr <= 0;
         o_buf_val <= 0;
     end
-    if (i_pipe_stall) begin 
+    if (i_pipe_stall) begin
     end
     else if ((current_state == IDLE) && start_tx) begin
         current_state <= is_write ? WRITE_STROBE : READ_STROBE;
         o_wb_addr <= mem_addr[31:2];
         o_wb_sel <= 4'b1111;
-        
+
         if (is_write)
             o_wb_data <= wr_val;
     end
     else if (state_strobe && !i_wb_stall) begin
         current_state <= current_state == READ_STROBE ? READ_WAIT_ACK : WRITE_WAIT_ACK;
         o_wb_addr <= 0;
-        o_wb_sel <= 0;
+
         o_wb_data <= 0;
     end
     // TODO probably not correct when wb response is on the same clock as the
@@ -191,7 +200,7 @@ always @(posedge i_clk) begin
         // for now we'll just squash bus error as a special read value.
         // for write, whatever.
         current_state <= current_state == READ_WAIT_ACK ? (i_pipe_stall ? READ_STALLED_OUT : READ_OUT) : IDLE;
-        
+
         if (!is_write) begin
             if (i_pipe_stall)
                 temp_read <= 32'h13371337;
@@ -203,6 +212,8 @@ always @(posedge i_clk) begin
     end
     else if (state_wait_ack && i_wb_ack && !i_wb_err) begin
         current_state <= current_state == READ_WAIT_ACK ? (i_pipe_stall ? READ_STALLED_OUT : READ_OUT) : IDLE;
+
+        o_wb_sel <= 0;
 
         if (!is_write) begin
             if (i_pipe_stall)

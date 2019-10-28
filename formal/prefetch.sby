@@ -6,10 +6,11 @@ smtbmc
 
 [script]
 read -formal tl45_prefetch.sv
+read -formal fwb_master.v
 
 prep -top tl45_prefetch
 
 [files]
 ../rtl/tl45_core/tl45_prefetch.sv
-
+../rtl/wishbone_formal/fwb_master.v
 

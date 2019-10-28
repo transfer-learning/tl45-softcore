@@ -84,7 +84,7 @@ always @(posedge i_clk) begin
         o_buf_inst <= i_wb_data;
         current_state <= WRITE_OUT;
     end
-    else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (i_wb_err)) begin // ACK With Error
+    else if ((current_state == FETCH_WAIT_ACK) && (i_wb_err)) begin // ACK With Error
         current_state <= IDLE;
         o_buf_pc <= 0;
         o_buf_inst <= 0;
@@ -122,10 +122,9 @@ end
     always @(*)
         assert(current_state < LAST_STATE);
 
-    initial assume(i_reset);
-    initial assume(!i_wb_ack);
-    initial assume(!i_wb_err);
-    initial assume(!i_wb_stall);
+    initial assume(i_reset); // start in reset
+	initial	assume(!i_wb_ack);
+	initial	assume(!i_wb_err);
 
     initial assert(current_state == IDLE);// Let's start in idle
 
@@ -193,14 +192,23 @@ end
             end         
         end
 
-    always @(posedge i_clk) begin
-        if (f_past_valid && $past(o_wb_stb))
-            assert(!o_wb_stb); // Assert stb will only last one clock
-    end
-
     always @(*) begin
         if ((current_state == FETCH_STROBE || current_state == FETCH_WAIT_ACK) && i_wb_stall)
             assert(o_wb_cyc);
     end
+
+// BUS Verify
+    wire [3:0] f_nreqs, f_nacks, f_outstanding;
+    fwb_master #(
+            .AW(30),
+            .DW(32),
+            .F_MAX_STALL(0),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(0),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wbm(i_clk, i_reset,
+			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
+			i_wb_ack, i_wb_stall, 32'h0, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
 `endif
 endmodule

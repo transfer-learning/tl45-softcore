@@ -15,17 +15,47 @@
 `include "wbpriarbiter.v"
 
 `endif
-
+`define	UARTSETUP	434	// Must match testbus_tb, =4Mb w/ a 100MHz ck
 module tl45_comp(
     i_clk, i_reset,
-
+    i_halt_proc,
+    i_uart, o_uart,
+    sdram_clk   ,
+    sdr_cs_n    ,
+    sdr_cke     ,
+    sdr_ras_n   ,
+    sdr_cas_n   ,
+    sdr_we_n    ,
+    sdr_dqm     ,
+    sdr_ba      ,
+    sdr_addr    ,
+    sdr_dq      ,
     inst_decode_err
 );
+    input wire i_halt_proc;
     input wire i_clk, i_reset;
     output wire inst_decode_err;
 
+    // SDRAM IO
+    output wire sdram_clk;
+    assign sdram_clk = i_clk;
+    output wire sdr_cs_n;
+    output wire sdr_cke;
+    output wire sdr_ras_n;
+    output wire sdr_cas_n;
+    output wire sdr_we_n;
+    output wire [1:0] sdr_dqm;
+    output wire [1:0] sdr_ba;
+    output wire [11:0] sdr_addr;
+    inout wire [15:0] sdr_dq;
+
+    //MEME
+    wire [12:0] sdr_addr_fake;
+    assign sdr_addr = sdr_addr_fake[11:0];
+
     // Memory Bus Hierarchy
     // * - denotes higher priority
+    // Right side are masters, left are slaves
     //
     // Memory - | - debug
     //          |
@@ -36,9 +66,27 @@ module tl45_comp(
     //          :   |*-*dfetch
     //
     //     main ^   ^ internal
-    //   (mbus)       (ibus)
+    //   (master)       (ibus)
     //
 
+    // master Wishbone
+    wire master_o_wb_cyc, master_o_wb_stb, master_o_wb_we;
+    wire [29:0] master_o_wb_addr;
+    wire [31:0] master_o_wb_data;
+    wire [3:0] master_o_wb_sel;
+    
+    reg master_i_wb_ack, master_i_wb_err;
+    wire master_i_wb_stall;
+    reg [31:0] master_i_wb_data;
+
+    // dbgbus Wishbone
+    wire dbgbus_o_wb_cyc, dbgbus_o_wb_stb, dbgbus_o_wb_we;
+    wire [29:0] dbgbus_o_wb_addr;
+    wire [31:0] dbgbus_o_wb_data;
+    wire [3:0] dbgbus_o_wb_sel;
+
+    wire dbgbus_i_wb_ack, dbgbus_i_wb_stall, dbgbus_i_wb_err;
+    wire [31:0] dbgbus_i_wb_data;
     // ibus Wishbone
     wire ibus_o_wb_cyc, ibus_o_wb_stb, ibus_o_wb_we;
     wire [29:0] ibus_o_wb_addr;
@@ -138,7 +186,7 @@ module tl45_comp(
         .i_clk(i_clk),
         .i_reset(i_reset),
         .i_pipe_stall(stall_fetch_decode),
-        .i_pipe_flush(flush_fetch_decode),
+        .i_pipe_flush(flush_fetch_decode || i_halt_proc),
         .i_new_pc(alu_buf_ld_newpc),
         .i_pc(alu_buf_br_pc),
 
@@ -335,22 +383,168 @@ module tl45_comp(
         .i_err(ibus_i_wb_err)
     );
 
+assign ibus_i_wb_data = master_i_wb_data;
+assign dbgbus_i_wb_data = master_i_wb_data;
+wbpriarbiter #(32, 30) mbus_arbiter(
+        .i_clk(i_clk),
+        // A
+        .i_a_cyc(ibus_o_wb_cyc),
+        .i_a_stb(ibus_o_wb_stb),
+        .i_a_we(ibus_o_wb_we),
+        .i_a_adr(ibus_o_wb_addr),
+        .i_a_dat(ibus_o_wb_data),
+        .i_a_sel(ibus_o_wb_sel),
+
+        .o_a_ack(ibus_i_wb_ack),
+        .o_a_stall(ibus_i_wb_stall),
+        .o_a_err(ibus_i_wb_err),
+
+        // B
+        .i_b_cyc(dbgbus_o_wb_cyc),
+        .i_b_stb(dbgbus_o_wb_stb),
+        .i_b_we(dbgbus_o_wb_we),
+        .i_b_adr(dbgbus_o_wb_addr),
+        .i_b_dat(dbgbus_o_wb_data),
+        .i_b_sel(dbgbus_o_wb_sel),
+
+        .o_b_ack(dbgbus_i_wb_ack),
+        .o_b_stall(dbgbus_i_wb_stall),
+        .o_b_err(dbgbus_i_wb_err),
+
+        // Merged
+        .o_cyc(master_o_wb_cyc),
+        .o_stb(master_o_wb_stb),
+        .o_we(master_o_wb_we),
+        .o_adr(master_o_wb_addr),
+        .o_dat(master_o_wb_data),
+        .o_sel(master_o_wb_sel),
+
+        .i_ack(master_i_wb_ack),
+        .i_stall(master_i_wb_stall),
+        .i_err(master_i_wb_err)
+    );
+
+// Master Bus Address Decoding
+//
+// Define some wires for returning values to the bus from our various
+// components
+reg	    [31:0]	smpl_data; // Simple Device
+wire	[31:0]	mem_data; // MEM
+wire	smpl_stall, mem_stall;
+reg	    smpl_interrupt;
+wire	mem_ack;
+reg	    smpl_ack;
+
+wire	smpl_sel, mem_sel;
+
+// Nothing should be assigned to the null page
+assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h2); // Simple device gets a big block
+assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
+
+wire	none_sel;
+assign	none_sel = (!smpl_sel)&&(!mem_sel);
+
+always @(posedge i_clk)
+    master_i_wb_err <= (master_o_wb_stb)&&(none_sel);
+
+// Master Bus Respond
+always @(posedge i_clk)
+    master_i_wb_ack <= (smpl_ack) || (mem_ack);
+
+always @(posedge i_clk)
+    if (smpl_ack)
+        master_i_wb_data <= smpl_data;
+    else if (mem_ack)
+        master_i_wb_data <= mem_data;
+    else
+        master_i_wb_data <= 32'h0;
+
+assign	master_i_wb_stall = 
+           ((smpl_sel) && (smpl_stall))
+        || ((mem_sel)  && (mem_stall));
+
+// Simple Device
+reg	[31:0]	smpl_register, power_counter;
+reg	[29:0]	bus_err_address;
+
+always @(posedge i_clk)
+    smpl_ack <= ((master_o_wb_stb)&&(smpl_sel));
+assign	smpl_stall = 1'b0;
+initial	smpl_interrupt = 1'b0;
+always @(posedge i_clk)
+    if ((master_o_wb_stb)&&(smpl_sel)&&(master_o_wb_we))
+    begin
+        case(wb_addr[3:0])
+        4'h1: smpl_register  <= master_o_wb_data;
+        4'h4: smpl_interrupt <= master_o_wb_data[0];
+        default: begin end
+        endcase
+    end
+
+always @(posedge i_clk)
+    case(wb_addr[3:0])
+    4'h0:    smpl_data <= 32'h20191028;
+    4'h1:    smpl_data <= smpl_register;
+    4'h2:    smpl_data <= { bus_err_address, 2'b00 };
+    4'h3:    smpl_data <= power_counter;
+    4'h4:    smpl_data <= { 31'h0, smpl_interrupt };
+    default: smpl_data <= 32'h00;
+    endcase
+
+// Start our clocks since power up counter from zero
+initial	power_counter = 0;
+always @(posedge i_clk)
+    // Count up from zero until the top bit is set
+    if (!power_counter[31])
+        power_counter <= power_counter + 1'b1;
+    else // Once the top bit is set, keep it set forever
+        power_counter[30:0] <= power_counter[30:0] + 1'b1;
+
+initial	bus_err_address = 0;
+always @(posedge i_clk)
+    if (master_i_wb_err)
+        bus_err_address <= master_i_wb_err;
 
 
+`ifdef VERILATOR
     memdev #(16) my_mem(
         .i_clk(i_clk),
         .i_wb_cyc(ibus_o_wb_cyc),
-        .i_wb_stb(ibus_o_wb_stb),
+        .i_wb_stb(ibus_o_wb_stb && mem_sel),
         .i_wb_we(ibus_o_wb_we),
         .i_wb_addr(ibus_o_wb_addr[15-2:0]),
         .i_wb_data(ibus_o_wb_data),
         .i_wb_sel(ibus_o_wb_sel),
 
-        .o_wb_ack(ibus_i_wb_ack),
-        .o_wb_stall(ibus_i_wb_stall),
-        .o_wb_data(ibus_i_wb_data)
+        .o_wb_ack(mem_ack),
+        .o_wb_stall(mem_stall),
+        .o_wb_data(mem_data)
     );
+`else
+	wire	[15:0]	ram_data;
+	wire		ram_drive_data;
+	reg	[15:0]	r_ram_data;
+    // real mem
+    assign sdr_dq = (ram_drive_data) ? ram_data : 16'bzzzz_zzzz_zzzz_zzzz;
+	reg	[15:0]	r_ram_data_ext_clk;
 
+    // 2FF Sync
+	always @(posedge i_clk)
+		r_ram_data_ext_clk <= sdr_dq;
+	always @(posedge i_clk)
+		r_ram_data <= r_ram_data_ext_clk;
+
+	wire [31:0] sdram_debug;
+
+	wbsdram yeetmemory(i_clk,
+		master_o_wb_cyc, (mem_sel && master_o_wb_stb), master_o_wb_we, 
+        {11'b0, master_o_wb_addr[11:0]}, master_o_wb_data, master_o_wb_sel,
+			mem_ack, mem_stall, mem_data,
+		sdr_cs_n, sdr_cke, sdr_ras_n, sdr_cas_n, sdr_we_n,
+			sdr_ba, sdr_addr_fake,
+			ram_drive_data, r_ram_data, ram_data, sdr_dqm,
+		sdram_debug);
+`endif
 
     // Misc
 
@@ -411,5 +605,5 @@ module tl45_comp(
 //        .dqm(o_ram_dqm)
 //    );
 
-endmodule : tl45_comp
+endmodule
 

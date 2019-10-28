@@ -48,7 +48,8 @@
 //
 `define	UARTSETUP	434	// Must match testbus_tb, =4Mb w/ a 100MHz ck
 //
-module	testbus(i_clk, i_reset, i_uart, o_uart,
+module	testbus(i_clk, i_reset, 
+i_uart, o_uart,
 sdram_clk   ,
 sdr_cs_n    ,
 sdr_cke     ,
@@ -153,7 +154,6 @@ assign sdr_addr = sdr_addr_fake[11:0];
 	always @(posedge i_clk)
 		wb_err <= (wb_stb)&&(none_sel);
 
-
 	// A "Simple" example device
 	reg	[31:0]	smpl_register, power_counter;
 	reg	[29:0]	bus_err_address;
@@ -210,14 +210,6 @@ assign sdr_addr = sdr_addr_fake[11:0];
 		r_ram_data_ext_clk <= sdr_dq;
 	always @(posedge i_clk)
 		r_ram_data <= r_ram_data_ext_clk;
-	//
-	// An example block RAM device
-	//
-
-	// memdev	#(14) blkram(i_clk,
-	// 		wb_cyc, (wb_stb)&&(mem_sel), wb_we, wb_addr[11:0],
-	// 			wb_odata, wb_sel,
-	// 		mem_ack, mem_stall, mem_data);
 
 	wire [31:0] sdram_debug;
 
@@ -228,53 +220,6 @@ assign sdr_addr = sdr_addr_fake[11:0];
 			sdr_ba, sdr_addr_fake,
 			ram_drive_data, r_ram_data, ram_data, sdr_dqm,
 		sdram_debug);
-// sdrc_top memyeet
-//            (
-//                     .cfg_sdr_width(2'b01),
-//                     .cfg_colbits(2'b00) ,
-                    
-//                 // WB bus
-//                     .wb_rst_i(i_reset)  ,
-//                     .wb_clk_i(i_clk)    ,
-                    
-//                     .wb_stb_i((mem_sel) && (wb_stb)) ,
-//                     .wb_ack_o(mem_ack)  , // Yeet
-//                     .wb_addr_i({20'b0, wb_addr[11:0]}),
-//                     .wb_we_i(wb_we)             ,
-//                     .wb_dat_i(wb_odata),
-//                     .wb_sel_i(wb_sel),
-//                     .wb_dat_o(mem_data),
-//                     .wb_cyc_i(wb_cyc),
-//                     .wb_cti_i(3'b0), 
-
-		
-// 		/* Interface to SDRAMs */
-//                     .sdram_clk   (sdram_clk)        ,
-//                     .sdram_resetn(~i_reset)        ,
-//                     .sdr_cs_n    (sdr_cs_n    )        ,
-//                     .sdr_cke     (sdr_cke     )        ,
-//                     .sdr_ras_n   (sdr_ras_n   )        ,
-//                     .sdr_cas_n   (sdr_cas_n   )        ,
-//                     .sdr_we_n    (sdr_we_n    )        ,
-//                     .sdr_dqm     (sdr_dqm     )        ,
-//                     .sdr_ba      (sdr_ba      )        ,
-//                     .sdr_addr    (sdr_addr_fake  )        , 
-//                     .sdr_dq      (sdr_dq      )        ,
-                    
-// 		/* Parameters */
-//                     .sdr_init_done(done_led)       ,
-//           .cfg_req_depth      (2'h3               ),	        //how many req. buffer should hold
-//           .cfg_sdr_en         (1'b1               ),
-//           .cfg_sdr_mode_reg   (13'h033            ),
-//           .cfg_sdr_tras_d     (4'h4               ),
-//           .cfg_sdr_trp_d      (4'h2               ),
-//           .cfg_sdr_trcd_d     (4'h2               ),
-//           .cfg_sdr_cas        (3'h3               ),
-//           .cfg_sdr_trcar_d    (4'h7               ),
-//           .cfg_sdr_twr_d      (4'h1               ),
-//           .cfg_sdr_rfsh       (12'h100            ), // reduced from 12'hC35
-//           .cfg_sdr_rfmax      (3'h6               )
-// 	    );
 	//
 	//
 	// A wishbone scope

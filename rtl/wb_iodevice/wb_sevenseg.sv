@@ -4,7 +4,8 @@ module wb_sevenseg(i_clk, i_reset,
 i_wb_cyc, i_wb_stb, i_wb_we, 
 i_wb_addr, i_wb_data, i_wb_sel,
 o_wb_ack, o_wb_stall, 
-o_wb_data);
+o_wb_data,
+displays);
     input	wire    i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we;
     input	wire	[29:0]	i_wb_addr;
     input	wire	[31:0]	i_wb_data;
@@ -12,6 +13,7 @@ o_wb_data);
     output	reg	    o_wb_ack;
     output	reg    o_wb_stall;
     output	reg	    [31:0] o_wb_data;
+    output  wire [6:0] displays[8];
 
     initial begin
         o_wb_stall = 0;
@@ -26,6 +28,16 @@ o_wb_data);
 
     reg [31:0] internal_data;
     initial internal_data = 0;
+
+    sevenSegmentDisp digit0(displays[0], internal_data[3:0]);
+    sevenSegmentDisp digit1(displays[1], internal_data[7:4]);
+    sevenSegmentDisp digit2(displays[2], internal_data[11:8]);
+    sevenSegmentDisp digit3(displays[3], internal_data[15:12]);
+    sevenSegmentDisp digit4(displays[4], internal_data[19:16]);
+    sevenSegmentDisp digit5(displays[5], internal_data[23:20]);
+    sevenSegmentDisp digit6(displays[6], internal_data[27:24]);
+    sevenSegmentDisp digit7(displays[7], internal_data[31:28]);
+
 
     always @(*) begin
         // Selector for wback

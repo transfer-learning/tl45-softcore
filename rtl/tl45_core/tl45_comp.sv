@@ -1,6 +1,6 @@
 `default_nettype none
 
-`define DO_INCLUDE
+//`define DO_INCLUDE
 
 `ifdef DO_INCLUDE
 
@@ -30,8 +30,12 @@ module tl45_comp(
     sdr_ba      ,
     sdr_addr    ,
     sdr_dq      ,
-    inst_decode_err
+    inst_decode_err,
+	ssegs
 );
+	output wire [6:0] ssegs[8];
+	input i_uart;
+	output o_uart;
     input wire i_halt_proc;
     input wire i_clk, i_reset;
     output wire inst_decode_err;
@@ -430,38 +434,44 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire	smpl_stall, mem_stall;
+wire [31:0] sseg_data;
+wire	smpl_stall, mem_stall, sseg_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
+wire sseg_ack;
 
-wire	smpl_sel, mem_sel;
+wire	smpl_sel, mem_sel, sseg_sel;
 
 // Nothing should be assigned to the null page
-assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h2); // Simple device gets a big block
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
+assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
+assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000);
 
 wire	none_sel;
-assign	none_sel = (!smpl_sel)&&(!mem_sel);
+assign	none_sel = (!smpl_sel)&&(!mem_sel)&&(!sseg_sel);
 
 always @(posedge i_clk)
-    master_i_wb_err <= (master_o_wb_stb)&&(none_sel);
+    master_i_wb_err <= (master_o_wb_stb) && (none_sel);
 
 // Master Bus Respond
 always @(posedge i_clk)
-    master_i_wb_ack <= (smpl_ack) || (mem_ack);
+    master_i_wb_ack <= (smpl_ack) || (mem_ack) || sseg_ack;
 
 always @(posedge i_clk)
     if (smpl_ack)
         master_i_wb_data <= smpl_data;
     else if (mem_ack)
         master_i_wb_data <= mem_data;
+    else if (sseg_ack)
+        master_i_wb_data <= sseg_data;
     else
         master_i_wb_data <= 32'h0;
 
 assign	master_i_wb_stall = 
            ((smpl_sel) && (smpl_stall))
-        || ((mem_sel)  && (mem_stall));
+        || ((mem_sel)  && (mem_stall))
+        || (sseg_sel) && (sseg_stall);
 
 // Simple Device
 reg	[31:0]	smpl_register, power_counter;
@@ -474,7 +484,7 @@ initial	smpl_interrupt = 1'b0;
 always @(posedge i_clk)
     if ((master_o_wb_stb)&&(smpl_sel)&&(master_o_wb_we))
     begin
-        case(wb_addr[3:0])
+        case(master_o_wb_addr[3:0])
         4'h1: smpl_register  <= master_o_wb_data;
         4'h4: smpl_interrupt <= master_o_wb_data[0];
         default: begin end
@@ -482,7 +492,7 @@ always @(posedge i_clk)
     end
 
 always @(posedge i_clk)
-    case(wb_addr[3:0])
+    case(master_o_wb_addr[3:0])
     4'h0:    smpl_data <= 32'h20191028;
     4'h1:    smpl_data <= smpl_register;
     4'h2:    smpl_data <= { bus_err_address, 2'b00 };
@@ -505,6 +515,15 @@ always @(posedge i_clk)
     if (master_i_wb_err)
         bus_err_address <= master_i_wb_err;
 
+// IO Devices
+
+// SevenSeg
+wb_sevenseg sevenseg_disp(i_clk, i_reset,
+master_o_wb_cyc, (master_o_wb_stb && sseg_sel), master_o_wb_we, 
+master_o_wb_addr, master_o_wb_data, master_o_wb_sel,
+sseg_ack, sseg_stall, 
+sseg_data,
+ssegs);
 
 `ifdef VERILATOR
     memdev #(16) my_mem(
@@ -604,6 +623,29 @@ always @(posedge i_clk)
 //        .web(o_ram_we_n),
 //        .dqm(o_ram_dqm)
 //    );
+
+	wire		rx_stb;
+	wire	[7:0]	rx_data;
+	rxuartlite #(`UARTSETUP) rxtransport(i_clk,
+					i_uart, rx_stb, rx_data);
+
+	wire		tx_stb, tx_busy;
+	wire	[7:0]	tx_data;
+	txuartlite #(`UARTSETUP) txtransport(i_clk,
+					tx_stb, tx_data, o_uart, tx_busy);
+
+hbbus	genbus(i_clk,
+		// The receive transport wires
+		rx_stb, rx_data,
+		// The bus control output wires
+		dbgbus_o_wb_cyc, dbgbus_o_wb_stb, dbgbus_o_wb_we,
+        dbgbus_o_wb_addr, dbgbus_o_wb_data, dbgbus_o_wb_sel,
+		//	The return bus wires
+		dbgbus_i_wb_ack, dbgbus_i_wb_stall, dbgbus_i_wb_err, dbgbus_i_wb_data,
+		// An interrupt line
+		0,
+		// The return transport wires
+		tx_stb, tx_data, tx_busy);
 
 endmodule
 

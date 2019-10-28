@@ -59,8 +59,7 @@ sdr_we_n    ,
 sdr_dqm     ,
 sdr_ba      ,
 sdr_addr    ,
-sdr_dq      ,
-done_led
+sdr_dq      
 `ifdef	VERILATOR
 	, o_halt
 `endif

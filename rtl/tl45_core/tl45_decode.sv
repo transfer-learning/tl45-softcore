@@ -107,11 +107,11 @@ always @(*)
         default: decode_err = 1'b1;
     endcase
 
+assign o_pipe_stall = i_pipe_stall;
 assign o_pipe_flush = i_pipe_flush;
 
 always @(posedge i_clk) begin
     if (i_reset || i_pipe_flush || (decode_err && !i_pipe_stall)) begin
-        o_pipe_stall <= 0;
         o_buf_pc     <= 0;
         o_buf_opcode <= 0;
         o_buf_ri     <= 0;
@@ -122,7 +122,6 @@ always @(posedge i_clk) begin
         o_decode_err <= !i_reset && decode_err;
     end
     else if (!i_pipe_stall) begin
-        o_pipe_stall <= 0;
         o_buf_pc     <= i_buf_pc;
         o_buf_opcode <= opcode;
 
@@ -177,7 +176,7 @@ end
 `endif
 
 
-endmodule
+endmodule : tl45_decode
 
 
 

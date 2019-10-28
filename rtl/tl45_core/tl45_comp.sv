@@ -5,13 +5,14 @@
 `ifdef DO_INCLUDE
 
 `include "tl45_dprf.sv"
-`include "tl45_nofetch.sv"
+`include "tl45_prefetch.sv"
 `include "tl45_decode.sv"
 `include "tl45_register_read.sv"
 `include "tl45_alu.sv"
 `include "tl45_writeback.sv"
 `include "tl45_memory.sv"
 `include "memdev.v"
+`include "wbpriarbiter.v"
 
 `endif
 
@@ -22,14 +23,48 @@ module tl45_comp(
 );
     input wire i_clk, i_reset;
     output wire inst_decode_err;
+
+    // Memory Bus Hierarchy
+    // * - denotes higher priority
+    //
+    // Memory - | - debug
+    //          |
+    //          |
+    //     IO - |*-*| - ifetch
+    //          :   |
+    //          :   |
+    //          :   |*-*dfetch
+    //
+    //     main ^   ^ internal
+    //   (mbus)       (ibus)
+    //
+
+    // ibus Wishbone
+    wire ibus_o_wb_cyc, ibus_o_wb_stb, ibus_o_wb_we;
+    wire [29:0] ibus_o_wb_addr;
+    wire [31:0] ibus_o_wb_data;
+    wire [3:0] ibus_o_wb_sel;
+
+    wire ibus_i_wb_ack, ibus_i_wb_stall, ibus_i_wb_err;
+    wire [31:0] ibus_i_wb_data;
+
+    // ifetch Wishbone
+    wire ifetch_o_wb_cyc, ifetch_o_wb_stb, ifetch_o_wb_we;
+    wire [29:0] ifetch_o_wb_addr;
+    wire [31:0] ifetch_o_wb_data;
+    wire [3:0] ifetch_o_wb_sel;
+
+    wire ifetch_i_wb_ack, ifetch_i_wb_stall, ifetch_i_wb_err;
+    wire [31:0] ifetch_i_wb_data;
+
+    // dfetch Wishbone
+    wire dfetch_o_wb_cyc, dfetch_o_wb_stb, dfetch_o_wb_we;
+    wire [29:0] dfetch_o_wb_addr;
+    wire [31:0] dfetch_o_wb_data;
+    wire [3:0] dfetch_o_wb_sel;
     
-    wire o_wb_cyc, o_wb_stb, o_wb_we;
-    wire [29:0] o_wb_addr;
-    wire [31:0] o_wb_data;
-    wire [3:0] o_wb_sel;
-    
-    wire i_wb_ack, i_wb_stall, i_wb_err;
-    wire [31:0] i_wb_data;
+    wire dfetch_i_wb_ack, dfetch_i_wb_stall, dfetch_i_wb_err;
+    wire [31:0] dfetch_i_wb_data;
 
     // fetch buffer
     wire [31:0] fetch_buf_pc, fetch_buf_inst;
@@ -87,13 +122,37 @@ module tl45_comp(
 
     // Stages
 
-    tl45_nofetch fetch(
+
+//    tl45_nofetch fetch(
+//        .i_clk(i_clk),
+//        .i_reset(i_reset),
+//        .i_pipe_stall(stall_fetch_decode),
+//        .i_pipe_flush(flush_fetch_decode),
+//        .i_new_pc(alu_buf_ld_newpc),
+//        .i_pc(alu_buf_br_pc),
+//        .o_buf_pc(fetch_buf_pc),
+//        .o_buf_inst(fetch_buf_inst)
+//    );
+
+    tl45_prefetch fetch(
         .i_clk(i_clk),
         .i_reset(i_reset),
         .i_pipe_stall(stall_fetch_decode),
         .i_pipe_flush(flush_fetch_decode),
         .i_new_pc(alu_buf_ld_newpc),
         .i_pc(alu_buf_br_pc),
+
+        .o_wb_cyc(ifetch_o_wb_cyc),
+        .o_wb_stb(ifetch_o_wb_stb),
+        .o_wb_we(ifetch_o_wb_we),
+        .o_wb_addr(ifetch_o_wb_addr),
+        .o_wb_data(ifetch_o_wb_data),
+        .o_wb_sel(ifetch_o_wb_sel),
+        .i_wb_ack(ifetch_i_wb_ack),
+        .i_wb_stall(ifetch_i_wb_stall),
+        .i_wb_err(ifetch_i_wb_err),
+        .i_wb_data(ifetch_i_wb_data),
+
         .o_buf_pc(fetch_buf_pc),
         .o_buf_inst(fetch_buf_inst)
     );
@@ -192,16 +251,16 @@ module tl45_comp(
         .o_pipe_flush(flush_rr_mem),
 
         // TOOD wishbone
-        .o_wb_cyc(o_wb_cyc),
-        .o_wb_stb(o_wb_stb),
-        .o_wb_we(o_wb_we),
-        .o_wb_addr(o_wb_addr),
-        .o_wb_data(o_wb_data),
-        .o_wb_sel(o_wb_sel),
-        .i_wb_ack(i_wb_ack),
-        .i_wb_stall(i_wb_stall),
-        .i_wb_err(i_wb_err),
-        .i_wb_data(i_wb_data),
+        .o_wb_cyc(dfetch_o_wb_cyc),
+        .o_wb_stb(dfetch_o_wb_stb),
+        .o_wb_we(dfetch_o_wb_we),
+        .o_wb_addr(dfetch_o_wb_addr),
+        .o_wb_data(dfetch_o_wb_data),
+        .o_wb_sel(dfetch_o_wb_sel),
+        .i_wb_ack(dfetch_i_wb_ack),
+        .i_wb_stall(dfetch_i_wb_stall),
+        .i_wb_err(dfetch_i_wb_err),
+        .i_wb_data(dfetch_i_wb_data),
 
         .i_buf_opcode(rr_buf_opcode),
         .i_buf_dr(rr_buf_dr),
@@ -233,19 +292,63 @@ module tl45_comp(
         .o_rf_val(dprf_wreg_val)
     );
 
+    // Wishbone master arbitration
+    assign dfetch_i_wb_data = ibus_i_wb_data;
+    assign ifetch_i_wb_data = ibus_i_wb_data;
+
+    wbpriarbiter #(32, 30) ibus_arbiter(
+        .i_clk(i_clk),
+        // A
+        .i_a_cyc(dfetch_o_wb_cyc),
+        .i_a_stb(dfetch_o_wb_stb),
+        .i_a_we(dfetch_o_wb_we),
+        .i_a_adr(dfetch_o_wb_addr),
+        .i_a_dat(dfetch_o_wb_data),
+        .i_a_sel(dfetch_o_wb_sel),
+
+        .o_a_ack(dfetch_i_wb_ack),
+        .o_a_stall(dfetch_i_wb_stall),
+        .o_a_err(dfetch_i_wb_err),
+
+        // B
+        .i_b_cyc(ifetch_o_wb_cyc),
+        .i_b_stb(ifetch_o_wb_stb),
+        .i_b_we(ifetch_o_wb_we),
+        .i_b_adr(ifetch_o_wb_addr),
+        .i_b_dat(ifetch_o_wb_data),
+        .i_b_sel(ifetch_o_wb_sel),
+
+        .o_b_ack(ifetch_i_wb_ack),
+        .o_b_stall(ifetch_i_wb_stall),
+        .o_b_err(ifetch_i_wb_err),
+
+        // Merged
+        .o_cyc(ibus_o_wb_cyc),
+        .o_stb(ibus_o_wb_stb),
+        .o_we(ibus_o_wb_we),
+        .o_adr(ibus_o_wb_addr),
+        .o_dat(ibus_o_wb_data),
+        .o_sel(ibus_o_wb_sel),
+
+        .i_ack(ibus_i_wb_ack),
+        .i_stall(ibus_i_wb_stall),
+        .i_err(ibus_i_wb_err)
+    );
+
+
 
     memdev #(16) my_mem(
         .i_clk(i_clk),
-        .i_wb_cyc(o_wb_cyc),
-        .i_wb_stb(o_wb_stb),
-        .i_wb_we(o_wb_we),
-        .i_wb_addr(o_wb_addr[15-2:0]),
-        .i_wb_data(o_wb_data),
-        .i_wb_sel(o_wb_sel),
+        .i_wb_cyc(ibus_o_wb_cyc),
+        .i_wb_stb(ibus_o_wb_stb),
+        .i_wb_we(ibus_o_wb_we),
+        .i_wb_addr(ibus_o_wb_addr[15-2:0]),
+        .i_wb_data(ibus_o_wb_data),
+        .i_wb_sel(ibus_o_wb_sel),
 
-        .o_wb_ack(i_wb_ack),
-        .o_wb_stall(i_wb_stall),
-        .o_wb_data(i_wb_data)
+        .o_wb_ack(ibus_i_wb_ack),
+        .o_wb_stall(ibus_i_wb_stall),
+        .o_wb_data(ibus_i_wb_data)
     );
 
 

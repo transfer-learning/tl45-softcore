@@ -1,0 +1,16 @@
+[options]
+mode prove
+
+[engines]
+smtbmc yices
+
+[script]
+read -formal wb_sevenseg.sv
+read -formal fwb_slave.v
+prep -top wb_sevenseg
+
+[files]
+../rtl/wb_iodevice/wb_sevenseg.sv
+../rtl/wishbone_formal/fwb_slave.v
+
+

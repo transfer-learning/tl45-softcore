@@ -6,7 +6,6 @@ smtbmc yices
 
 [script]
 read -formal tl45_alu.sv
-
 prep -top tl45_alu
 
 [files]

@@ -128,11 +128,11 @@ end
 always @(*) begin
     case(alu_op)
         ALUOP_ADD, ALUOP_SUB: {carry_value, alu_result} = i_sr1_val + opt_b_2complement;
-        ALUOP_AND: alu_result = i_sr1_val & i_sr2_val;
-        ALUOP_OR: alu_result = i_sr1_val | i_sr2_val;
-        ALUOP_XOR: alu_result = i_sr1_val ^ i_sr2_val;
-        ALUOP_NOTA: alu_result = ~i_sr1_val;
-        default: alu_result = i_sr1_val;
+        ALUOP_AND: begin alu_result = i_sr1_val & i_sr2_val; carry_value = 0; end
+        ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
+        ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end
+        ALUOP_NOTA: begin alu_result = ~i_sr1_val; carry_value = 0; end
+        default: begin alu_result = i_sr1_val; carry_value = 0; end
     endcase
 end
 
@@ -245,4 +245,4 @@ end
 
 `endif
 
-endmodule : tl45_alu
+endmodule

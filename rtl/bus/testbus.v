@@ -65,17 +65,17 @@ done_led
 `endif
 	);
 
-output wire sdram_clk   ;
+output wire sdram_clk;
 assign sdram_clk = i_clk;
-output wire sdr_cs_n    ;
-output wire sdr_cke     ;
-output wire sdr_ras_n   ;
-output wire sdr_cas_n   ;
-output wire sdr_we_n    ;
-output wire [1:0] sdr_dqm     ;
-output wire [1:0] sdr_ba      ;
-output wire [11:0] sdr_addr    ;
-inout wire [15:0] sdr_dq      ;
+output wire sdr_cs_n;
+output wire sdr_cke;
+output wire sdr_ras_n;
+output wire sdr_cas_n;
+output wire sdr_we_n;
+output wire [1:0] sdr_dqm;
+output wire [1:0] sdr_ba;
+output wire [11:0] sdr_addr;
+inout wire [15:0] sdr_dq;
 
 //MEME
 wire [12:0] sdr_addr_fake;

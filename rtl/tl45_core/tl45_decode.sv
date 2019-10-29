@@ -53,7 +53,8 @@ wire [3:0] dr, sr1, sr2;
 wire [15:0] imm;
 wire [11:0] low_imm; // portion of imm not conflicting with sr2
 assign {opcode, ri, lh, zs, dr, sr1, imm} = i_buf_inst;
-assign sr2 = i_buf_inst[19:16];
+assign sr2 = i_buf_inst[15:12];
+assign low_imm = i_buf_inst[11:0];
 assign mode = {ri, lh, zs};
 
 

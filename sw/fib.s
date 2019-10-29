@@ -10,9 +10,9 @@ loop:
 
     ADD r1, r1, r2  ; x1 = x1 + x2
 
-    ADD r3, r2, r0
+    ADD r4, r2, r0
     ADD r2, r1, r0
-    ADD r1, r3, r0
+    ADD r1, r4, r0
     ; XCHG r1, r2     ; x1, x2 = x2, x1
 
     ; OUT r2, 0xFF

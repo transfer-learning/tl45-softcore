@@ -11,21 +11,24 @@ int main(int argc, char **argv) {
 
   auto &ram = tb->m_core->tl45_comp__DOT__my_mem__DOT__mem;
 
+  // TODO jump encoding should not be shifted now
+  // TODO SW encoding wrong
+
   uint32_t init[] = {
       0x0D100000,
       0x0D200001,
       0x0D30000A,
       0x0E500100,
-      0x6540000C,
+      0x65400034,
       0x08112000,
       0x08420000,
       0x08210000,
       0x08140000,
-      0xA9250000, // TODO SW encoding wrong
+      0xA9250000,
       0x0D33FFFF,
       0x65F00010,
       0x08402000,
-      0x00000000,
+      0x65F00034,
   };
 
   memcpy(ram, init, sizeof(init));

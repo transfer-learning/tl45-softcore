@@ -1,13 +1,14 @@
 from __future__ import print_function
 
+import glob
+import sys
 import time
 
 import serial
-import glob
-import sys
-
 
 IO_SEVEN_SEG = 0x1000000
+
+VERBOSE = False
 
 # hexes = []
 # with open(sys.argv[1]) as f:
@@ -29,16 +30,21 @@ if not serial_ifs:
 print('Using serial:', serial_ifs[0])
 
 
+def vprint(*args, **kwargs):
+    if VERBOSE:
+        print(*args, **kwargs)
+
+
 def write_ack(ser, address, data, verify=False):
     payload = 'A' + hex(address)[2:] + 'W' + hex(data)[2:] + '\n'
 
     ser.write(payload.encode('ascii'))
-    print(payload)
+    vprint(payload)
     time.sleep(0.1)
 
     while True:
         response = ser.readline().decode('ascii')
-        print(response)
+        vprint(response)
         if 'K' in response:
             break
         if response == '':
@@ -60,12 +66,12 @@ def read_ack(ser, address):
     payload = 'A' + hex(address)[2:] + 'R' + '\n'
 
     ser.write(payload.encode('ascii'))
-    print(payload)
+    vprint(payload)
     time.sleep(0.1)
 
     while True:
         response = ser.readline().decode('ascii')
-        print(response)
+        vprint(response)
         if 'R' in response:
             break
         if response == '':
@@ -82,28 +88,61 @@ def read_ack(ser, address):
     return parsehex(mem)
 
 
-with serial.Serial(serial_ifs[0], 115200, timeout=0.1) as ser:
-    print('Serial Name:', ser.name)
-
-    while ser.read(size=10000):
-        pass
-
-    prog = open('a.out', 'rb').read()
+def dump_file(ser, filename, base=0, fixes=None):
+    prog = open(filename, 'rb').read()
+    fixes = fixes or {}
 
     addr = 0
     for i in range(0, len(prog), 4):
-        num = prog[i] << 24 | prog[i+1] << 16 | prog[i+2] << 8 | prog[i+3]
-        print(hex(num))
-        write_ack(ser, addr*4, num, verify=True)
+        num = prog[i] << 24 | prog[i + 1] << 16 | prog[i + 2] << 8 | prog[i + 3]
+        vprint(hex(num))
+        if num in fixes:
+            vprint('fixing:', hex(num), '->', hex(fixes[num]))
+            num = fixes[num]
+
+        write_ack(ser, base + addr * 4, num, verify=True)
         addr += 1
+
+
+def dump_raw(ser, arr, base=0):
+    for i in range(0, len(arr)):
+        write_ack(ser, base + i * 4, arr[i], verify=True)
+
+
+with serial.Serial(serial_ifs[0], 115200, timeout=0.1) as ser:
+    print('Serial Name:', ser.name)
+
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+
+    while True:
+        d = ser.read(size=1000000)
+        if not d:
+            break
+        print(d)
+
+    # arr = [
+    #     0x0D100000,
+    #     0x0D200001,
+    #     0x0D30000A,
+    #     0x0E500100,
+    #     0x65400034,
+    #     0x08112000,
+    #     0x08420000,
+    #     0x08210000,
+    #     0x08140000,
+    #     0xA9250000,
+    #     0x0D33FFFF,
+    #     0x65F00010,
+    #     0x08402000,
+    #     0x65F00034,
+    # ]
+
+    dump_file(ser, 'a.out', fixes={
+        0x0D500100: 0x0E500100,
+        0: 0x65F00034,
+    })
 
     # for i in range(1000):
     #     write_ack(ser, 0x1000000, i)
     #     time.sleep(0.5)
-
-
-
-
-
-
-

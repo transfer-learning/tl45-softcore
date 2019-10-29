@@ -92,21 +92,79 @@ wire start_tx;
 assign start_tx = (i_buf_opcode == 5'h10 ||   // IN
                    i_buf_opcode == 5'h11 ||   // OUT
                    i_buf_opcode == 5'h14 ||   // LW
-                   i_buf_opcode == 5'h15);    // SW
-
+                   i_buf_opcode == 5'h15 ||   // SW
+                   i_buf_opcode == 5'h12 ||   // LB
+                   i_buf_opcode == 5'h0F ||   // LBSE
+                   i_buf_opcode == 5'h13 );     // SB
 wire is_io;
 assign is_io =    (i_buf_opcode == 5'h10 ||   // IN
                    i_buf_opcode == 5'h11);    // OUT
 
 wire is_write;
 assign is_write = (i_buf_opcode == 5'h11 ||   // OUT
-                   i_buf_opcode == 5'h15);    // SW
+                   i_buf_opcode == 5'h15 ||   // SW
+                   i_buf_opcode == 5'h13 );   // SB
+
+wire is_byte_operation;
+assign is_byte_operation = (i_buf_opcode == 5'h12 ||  // LB
+                            i_buf_opcode == 5'h0F ||  // LBSE
+                            i_buf_opcode == 5'h13 );  // SB
 
 wire [31:0] mem_addr;
 assign mem_addr = is_io ? {16'hff, i_buf_imm[13:0], 2'b00} : (i_buf_sr1_val + i_buf_imm);
 
 wire [31:0] wr_val;
 assign wr_val = is_io ? i_buf_sr1_val : i_buf_sr2_val;
+
+reg [3:0] wb_sel_val;
+always @(*)
+    if (is_byte_operation)
+        case(mem_addr[1:0])
+            0: wb_sel_val = 4'b0001;
+            1: wb_sel_val = 4'b0010;
+            2: wb_sel_val = 4'b0100;
+            default: wb_sel_val = 4'b1000;
+        endcase
+    else
+        wb_sel_val = 4'b1111;
+
+reg [31:0] write_data;
+always @(*)
+    if (is_byte_operation)
+        case(mem_addr[1:0])
+            0: write_data = wr_val;
+            1: write_data = wr_val << 8;
+            2: write_data = wr_val << 16;
+            default: write_data = wr_val << 24;
+        endcase
+    else
+        write_data = wr_val;
+
+
+// WOW Verilog, you are like Tiger
+function [7:0] trunc_32_to_8(input [31:0] val32);
+  trunc_32_to_8 = val32[7:0];
+endfunction
+
+
+reg [31:0] in_data;
+reg [7:0] shifted_i_data;
+always @(*)
+    if (is_byte_operation) begin
+        case(mem_addr[1:0])
+            0: shifted_i_data = trunc_32_to_8(i_wb_data);
+            1: shifted_i_data = trunc_32_to_8(i_wb_data >> 8);
+            2: shifted_i_data = trunc_32_to_8(i_wb_data >> 16);
+            default: shifted_i_data = trunc_32_to_8(i_wb_data >> 24);
+        endcase
+        if (i_buf_opcode == 5'h0F) // LWSE
+            in_data = {{24{shifted_i_data[7]}}, shifted_i_data};
+        else
+            in_data = {24'h0, shifted_i_data};
+    end
+    else
+        in_data = i_wb_data;
+
 
 localparam
     IDLE = 0,
@@ -183,10 +241,10 @@ always @(posedge i_clk) begin
     else if ((current_state == IDLE) && start_tx) begin
         current_state <= is_write ? WRITE_STROBE : READ_STROBE;
         o_wb_addr <= mem_addr[31:2];
-        o_wb_sel <= 4'b1111;
+        o_wb_sel <= wb_sel_val;
 
         if (is_write)
-            o_wb_data <= wr_val;
+            o_wb_data <= write_data;
     end
     else if (state_strobe && !i_wb_stall) begin
         current_state <= current_state == READ_STROBE ? READ_WAIT_ACK : WRITE_WAIT_ACK;
@@ -217,10 +275,10 @@ always @(posedge i_clk) begin
 
         if (!is_write) begin
             if (i_pipe_stall)
-                temp_read <= i_wb_data;
+                temp_read <= in_data;
             else begin
                 o_buf_dr <= i_buf_dr;
-                o_buf_val <= i_wb_data;
+                o_buf_val <= in_data;
             end
         end
     end

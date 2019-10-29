@@ -102,6 +102,9 @@ always @(*)
         5'h10: decode_err = (mode != 0) || (sr1 != 0);                  //   IN
         5'h11: decode_err = (mode != 0) || (dr != 0);                   //  OUT
 
+        5'h0F,                                                          //   LBSE
+        5'h12,                                                          //   LB
+        5'h13,                                                          //   SB
         5'h14,                                                          //   LW
         5'h15: decode_err = (mode != 3'b001);                           //   SW
 

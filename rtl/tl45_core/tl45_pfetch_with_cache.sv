@@ -104,14 +104,16 @@ assign fetch_cache_tag = o_wb_addr[20:12];
 always @(posedge i_clk) begin
     if (i_reset) begin // flush all cache
         current_state <= IDLE;
-        `ifndef FORMAL
+`ifndef FORMAL
+`ifndef VERILATOR
         for (i=0; i<2048; i=i+1)
-            cache_valid[i] = 0;
+            cache_valid[i] <= 0;
         for (i=2048; i<4096; i=i+1)
-            cache_valid[i] = 0;
-        `endif
+            cache_valid[i] <= 0;
+`endif
+`endif
     end
-    else if (current_state == IDLE && (!cache_hit) && (!i_wb_stall)) begin
+    else if (current_state == IDLE && (!cache_hit) && (!i_wb_stall || !o_wb_cyc)) begin
         // Don't begin untill unstall
         // On cache miss, go fetch
         current_state <= FETCH_STROBE;
@@ -140,7 +142,8 @@ always @(posedge i_clk) begin
         o_buf_inst <= 0;
         if (i_new_pc)
             current_pc <= i_pc;
-    end else begin
+    end
+    else if (!i_pipe_stall) begin
         if (cache_hit) begin
             o_buf_inst <= cache_hit_data;
             o_buf_pc <= current_pc;

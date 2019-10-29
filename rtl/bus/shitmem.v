@@ -105,7 +105,7 @@ module	shitmem(i_clk, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_se
 			   OUT = 3;
 
 	integer current_state;
-	current_state = IDLE;
+	initial current_state = IDLE;
 
 	always @(posedge i_clk)
 	begin

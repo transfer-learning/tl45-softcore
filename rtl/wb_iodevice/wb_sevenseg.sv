@@ -4,8 +4,11 @@ module wb_sevenseg(i_clk, i_reset,
 i_wb_cyc, i_wb_stb, i_wb_we, 
 i_wb_addr, i_wb_data, i_wb_sel,
 o_wb_ack, o_wb_stall, 
-o_wb_data,
-displays);
+    o_wb_data
+`ifndef VERILATOR
+    , displays
+`endif
+);
     input	wire    i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we;
     input	wire	[29:0]	i_wb_addr;
     input	wire	[31:0]	i_wb_data;
@@ -13,7 +16,11 @@ displays);
     output	reg	    o_wb_ack;
     output	reg    o_wb_stall;
     output	reg	    [31:0] o_wb_data;
-    output  wire [6:0] displays[8];
+
+`ifndef VERILATOR
+    output
+`endif
+    wire [6:0] displays[8];
 
     initial begin
         o_wb_stall = 0;
@@ -104,4 +111,4 @@ if (f_past_valid) begin
 end
 
 `endif
-endmodule
+endmodule : wb_sevenseg

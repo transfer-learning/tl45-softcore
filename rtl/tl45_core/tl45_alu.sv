@@ -191,7 +191,8 @@ assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
 always @(posedge i_clk) begin
     if (i_reset || o_pipe_flush) begin
-        flags <= 0;
+        if (i_reset)
+            flags <= 0;
         o_dr <= 0;
         o_value <= 0;
     end

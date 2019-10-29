@@ -11,8 +11,9 @@
 `include "tl45_alu.sv"
 `include "tl45_writeback.sv"
 `include "tl45_memory.sv"
-`include "memdev.v"
+//`include "memdev.v"
 `include "wbpriarbiter.v"
+//`include "hbbus.v"
 
 `endif
 `define	UARTSETUP	434	// Must match testbus_tb, =4Mb w/ a 100MHz ck
@@ -31,7 +32,9 @@ module tl45_comp(
     sdr_addr    ,
     sdr_dq      ,
     inst_decode_err,
+`ifndef VERILATOR
 	ssegs,
+`endif
     opcode_breakout,
     o_lwopcode,
     o_clk,
@@ -42,7 +45,11 @@ module tl45_comp(
     output wire o_clk, o_halt;
     assign o_clk = i_clk;
     assign o_halt = i_halt_proc;
+`ifndef VERILATOR
     output wire [6:0] ssegs[8];
+`else
+    wire [6:0] ssegs[8];
+`endif
 	input i_uart;
 	output o_uart;
     input wire i_halt_proc;
@@ -195,7 +202,8 @@ module tl45_comp(
 //        .o_buf_inst(fetch_buf_inst)
 //    );
 
-    tl45_prefetch fetch(
+    // tl45_prefetch
+    tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
         .i_reset(i_reset),
         .i_pipe_stall(stall_fetch_decode),
@@ -525,20 +533,31 @@ always @(posedge i_clk)
 initial	bus_err_address = 0;
 always @(posedge i_clk)
     if (master_i_wb_err)
-        bus_err_address <= master_i_wb_err;
+        bus_err_address <= master_o_wb_addr; // possibly wrong
 
 // IO Devices
 
 // SevenSeg
-wb_sevenseg sevenseg_disp(i_clk, i_reset,
-master_o_wb_cyc, (master_o_wb_stb && sseg_sel), master_o_wb_we, 
-master_o_wb_addr, master_o_wb_data, master_o_wb_sel,
-sseg_ack, sseg_stall, 
-sseg_data,
-ssegs);
+wb_sevenseg sevenseg_disp(
+    i_clk,
+    i_reset,
+    master_o_wb_cyc,
+    (master_o_wb_stb && sseg_sel),
+    master_o_wb_we,
+    master_o_wb_addr,
+    master_o_wb_data,
+    master_o_wb_sel,
+    sseg_ack,
+    sseg_stall,
+    sseg_data
+`ifndef VERILATOR
+    , ssegs
+`endif
+);
+
 
 `ifdef VERILATOR
-    memdev #(16) my_mem(
+    shitmem #(16) my_mem(
         .i_clk(i_clk),
         .i_wb_cyc(ibus_o_wb_cyc),
         .i_wb_stb(ibus_o_wb_stb && mem_sel),
@@ -636,6 +655,7 @@ ssegs);
 //        .dqm(o_ram_dqm)
 //    );
 
+`ifndef VERILATOR
 	wire		rx_stb;
 	wire	[7:0]	rx_data;
 	rxuartlite #(`UARTSETUP) rxtransport(i_clk,
@@ -658,6 +678,7 @@ hbbus	genbus(i_clk,
 		0,
 		// The return transport wires
 		tx_stb, tx_data, tx_busy);
+`endif
 
-endmodule
+endmodule : tl45_comp
 

@@ -73,8 +73,10 @@ module	hbidle(i_clk, i_reset, i_cmd_stb, i_cmd_word, o_idl_busy,
 		begin
 			idle_stb <= 1'b0;
 			idle_counter <= 0;
-		end else
-			{ idle_stb, idle_counter } <= idle_counter + 1'b1;
+		end
+		// REMOVE 'z's 
+		// else
+		// { idle_stb, idle_counter } <= idle_counter + 1'b1;
 
 	initial	o_idl_stb = 1'b0;
 	always @(posedge i_clk)

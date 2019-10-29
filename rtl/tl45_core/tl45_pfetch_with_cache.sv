@@ -52,7 +52,7 @@ initial current_pc = 0;
 localparam IDLE = 0,
            FETCH_STROBE = 1,
            FETCH_WAIT_ACK = 2,
-           WRITE_OUT = 3,
+           FETCH_NEXT = 3,
            LAST_STATE = 4;
 integer current_state;
 initial current_state = IDLE;
@@ -71,44 +71,48 @@ initial current_state = IDLE;
 // 4K is choosen because of we need 9Bit / Tag so it will use M4K
 // Please check altera documentation for alternative choices
 
-reg [8:0]  cache_tags [4096]; //  9 Bits Tag
+reg [8:0]  cache_tags [256]; //  9 Bits Tag
 reg [31:0] cache_data [4096]; // 32 Bits Data
-reg cache_valid [4096]; // 4K * 1 M4K
+reg cache_valid [256];
 integer i;
 `ifndef FORMAL
 initial begin    
-    for (i=0; i<2048; i=i+1)
-        cache_valid[i] = 0;
-    for (i=2048; i<4096; i=i+1)
+    for (i=0; i<256; i=i+1)
         cache_valid[i] = 0;
 end
 `endif
 wire cache_hit;
-wire [11:0] cache_index;
-assign cache_index = current_pc[13:2];
+wire [7:0] cache_index;
+wire [11:0] cache_word_index;
+assign cache_index = current_pc[13:6];
+assign cache_word_index = current_pc[13:2];
 assign cache_hit = (current_pc[31:14] == {9'h0, cache_tags[cache_index]})
                 && (cache_valid[cache_index]); // Cache Hit
 wire [31:0] next_o_buf_pc;
 assign next_o_buf_pc = cache_valid[cache_index] ? current_pc : 32'h0;
 wire [31:0] next_o_buf_inst;
-assign next_o_buf_inst = cache_valid[cache_index] ? cache_data[cache_index] : 32'h0;
+assign next_o_buf_inst = cache_valid[cache_index] ? cache_data[cache_word_index] : 32'h0;
 
 wire [31:0] cache_hit_data;
 assign cache_hit_data = cache_data[cache_index];
 
-wire [11:0] fetch_cache_index;
-assign fetch_cache_index = o_wb_addr[11:0];
+wire [7:0] fetch_cache_index;
+assign fetch_cache_index = o_wb_addr[11:4];
+wire [11:0] fetch_cache_word_index;
+assign fetch_cache_word_index = o_wb_addr[11:0];
 wire [8:0] fetch_cache_tag;
 assign fetch_cache_tag = o_wb_addr[20:12];
+
+integer cacheline_fill_counter;
+initial cacheline_fill_counter = 0;
 
 always @(posedge i_clk) begin
     if (i_reset) begin // flush all cache
         current_state <= IDLE;
+        cacheline_fill_counter <= 0;
 `ifndef FORMAL
 `ifndef VERILATOR
-        for (i=0; i<2048; i=i+1)
-            cache_valid[i] <= 0;
-        for (i=2048; i<4096; i=i+1)
+        for (i=0; i<256; i=i+1)
             cache_valid[i] <= 0;
 `endif
 `endif
@@ -116,6 +120,7 @@ always @(posedge i_clk) begin
     else if (current_state == IDLE && (!cache_hit) && (!i_wb_stall || !o_wb_cyc)) begin
         // Don't begin untill unstall
         // On cache miss, go fetch
+        cacheline_fill_counter <= 0;
         current_state <= FETCH_STROBE;
         o_wb_addr <= current_pc[31:2];
     end else if (current_state == FETCH_STROBE && (!i_wb_stall)) begin
@@ -123,10 +128,24 @@ always @(posedge i_clk) begin
     end else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin
         // Succeed fetching
         cache_tags[fetch_cache_index] <= fetch_cache_tag;
-        cache_data[fetch_cache_index] <= i_wb_data;
-        cache_valid[fetch_cache_index] <= 1'b1;
-        current_state <= IDLE;
-    end else if ((current_state == FETCH_WAIT_ACK) && (!i_wb_stall) && (i_wb_err)) begin
+        cache_data[fetch_cache_word_index] <= i_wb_data;
+        if (cacheline_fill_counter == 31) begin
+            current_state <= IDLE;
+            cache_valid[fetch_cache_index] <= 1'b1;
+        end
+        else if (!i_wb_stall || !o_wb_cyc) begin
+            o_wb_addr <= o_wb_addr + 4; // Fetch next instruction
+            current_state <= FETCH_STROBE;
+            cacheline_fill_counter <= cacheline_fill_counter + 1;
+        end else
+            current_state <= FETCH_NEXT;
+    end
+    else if ((current_state == FETCH_NEXT) && (!i_wb_stall || !o_wb_cyc)) begin
+        o_wb_addr <= o_wb_addr + 4;
+        current_state <= FETCH_STROBE;
+        cacheline_fill_counter <= cacheline_fill_counter + 1;
+    end 
+    else if ((current_state == FETCH_WAIT_ACK) && (!i_wb_stall) && (i_wb_err)) begin
         current_state <= IDLE;
     end
 end
@@ -144,7 +163,7 @@ always @(posedge i_clk) begin
             current_pc <= i_pc;
     end
     else if (!i_pipe_stall) begin
-        if (cache_hit) begin
+        if (current_state == IDLE && cache_hit) begin // IDLE Check is not nessary, but this improves performance
             o_buf_inst <= cache_hit_data;
             o_buf_pc <= current_pc;
             current_pc <= current_pc + 4;

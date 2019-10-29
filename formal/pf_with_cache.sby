@@ -1,0 +1,16 @@
+[options]
+mode prove
+
+[engines]
+smtbmc
+
+[script]
+read -formal tl45_pfetch_with_cache.sv
+read -formal fwb_master.v
+
+prep -top tl45_pfetch_with_cache
+
+[files]
+../rtl/tl45_core/tl45_pfetch_with_cache.sv
+../rtl/wishbone_formal/fwb_master.v
+

@@ -1,6 +1,6 @@
 `default_nettype none
 
-module tl45_prefetch(
+module tl45_pfetch_with_cache(
     i_clk, i_reset,
     i_pipe_stall,
     i_pipe_flush,
@@ -24,7 +24,7 @@ input wire [31:0] i_pc;
 // Wishbone
 output reg o_wb_stb, o_wb_we;
 output wire o_wb_cyc;
-output wire [29:0] o_wb_addr; // WB Address
+output reg [29:0] o_wb_addr; // WB Address
 output reg [31:0] o_wb_data; // WB Data
 output reg [3:0]  o_wb_sel; // WB Byte Sel (One hot)
 initial begin
@@ -44,25 +44,10 @@ initial begin
     o_buf_inst = 0;
 end
 
-// CACHE
-// We have 4K L1 Cache
-// 4K is choosen because of we need 9Bit / Tag so it will use M4K
-// Please check altera documentation for alternative choices
-
-reg [8:0]  cache_tags [4096]; //  9 Bits Tag
-reg [31:0] cache_data [4096]; // 32 Bits Data
-reg valid [4096]; // Valid?
-integer i;
-initial begin    
-    for (i=0; i<4096; i=i+1)
-        valid[i] = 0;
-end
-// END CACHE
 
 
 // Internal PC
 reg [31:0] current_pc;
-assign o_wb_addr = current_pc[31:2];
 initial current_pc = 0;
 localparam IDLE = 0,
            FETCH_STROBE = 1,
@@ -74,63 +59,96 @@ initial current_state = IDLE;
 
 // Cache Process:
 // Compare current_pc[31:14](18bits total) zero extended cache_tags[current_pc[13:2](12 bits)](9bits)
-// Logical AND (&&) the above with valid[current_pc[13:2]]
+// Logical AND (&&) the above with cache_valid[current_pc[13:2]]
 // If True then it's okay to load the cache
 // else load zero to output (stall) and clock into fetch statemachine
 
+
+// Quote RAMA: Designed the hardware in a brain damage way.
+// This is exactally that "Brain Damage Way"
+// CACHE
+// We have 4K L1 Cache
+// 4K is choosen because of we need 9Bit / Tag so it will use M4K
+// Please check altera documentation for alternative choices
+
+reg [8:0]  cache_tags [4096]; //  9 Bits Tag
+reg [31:0] cache_data [4096]; // 32 Bits Data
+reg cache_valid [4096]; // 4K * 1 M4K
+integer i;
+`ifndef FORMAL
+initial begin    
+    for (i=0; i<2048; i=i+1)
+        cache_valid[i] = 0;
+    for (i=2048; i<4096; i=i+1)
+        cache_valid[i] = 0;
+end
+`endif
 wire cache_hit;
-assign cache_hit = (current_pc[31:14] == {9'h0, cache_tags[current_pc[13:2]]})
-                && (valid[current_pc[13:2]]); // Cache Hit
+wire [11:0] cache_index;
+assign cache_index = current_pc[13:2];
+assign cache_hit = (current_pc[31:14] == {9'h0, cache_tags[cache_index]})
+                && (cache_valid[cache_index]); // Cache Hit
 wire [31:0] next_o_buf_pc;
-assign next_o_buf_pc = valid ? current_pc : 32'h0;
+assign next_o_buf_pc = cache_valid[cache_index] ? current_pc : 32'h0;
 wire [31:0] next_o_buf_inst;
-assign next_o_buf_inst = valid ? cache_data[current_pc[31:2]] : 32'h0;
+assign next_o_buf_inst = cache_valid[cache_index] ? cache_data[cache_index] : 32'h0;
+
+wire [31:0] cache_hit_data;
+assign cache_hit_data = cache_data[cache_index];
+
+wire [11:0] fetch_cache_index;
+assign fetch_cache_index = o_wb_addr[11:0];
+wire [8:0] fetch_cache_tag;
+assign fetch_cache_tag = o_wb_addr[20:12];
 
 always @(posedge i_clk) begin
     if (i_reset) begin // flush all cache
-        for(i=0; i<4096; i=i+1)
-            valid[i] <= 0;
+        current_state <= IDLE;
+        `ifndef FORMAL
+        for (i=0; i<2048; i=i+1)
+            cache_valid[i] = 0;
+        for (i=2048; i<4096; i=i+1)
+            cache_valid[i] = 0;
+        `endif
+    end
+    else if (current_state == IDLE && (!cache_hit) && (!i_wb_stall)) begin
+        // Don't begin untill unstall
+        // On cache miss, go fetch
+        current_state <= FETCH_STROBE;
+        o_wb_addr <= current_pc[31:2];
+    end else if (current_state == FETCH_STROBE && (!i_wb_stall)) begin
+        current_state <= FETCH_WAIT_ACK;
+    end else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin
+        // Succeed fetching
+        cache_tags[fetch_cache_index] <= fetch_cache_tag;
+        cache_data[fetch_cache_index] <= i_wb_data;
+        cache_valid[fetch_cache_index] <= 1'b1;
+        current_state <= IDLE;
+    end else if ((current_state == FETCH_WAIT_ACK) && (!i_wb_stall) && (i_wb_err)) begin
+        current_state <= IDLE;
     end
 end
 
-// STATE MACHINE
-// IDLE -> FETCH_STROBE -> FETCH_WAIT_ACK -> WRITE_OUT ->(Clear Local Buffer) IDLE
-
-
 always @(posedge i_clk) begin
     if (i_reset) begin // STALL
-        current_state <= IDLE;
         current_pc <= 0;
         o_buf_pc <= 0;
         o_buf_inst <= 0;
     end 
     else if (i_pipe_flush || i_new_pc) begin // FLUSH 
-        current_state <= IDLE;
         o_buf_pc <= 0;
         o_buf_inst <= 0;
         if (i_new_pc)
             current_pc <= i_pc;
-    end
-    else if ((current_state == IDLE)) begin // IDLE && Wishbone not stalled
-        current_state <= FETCH_STROBE;
-    end
-    else if (current_state == FETCH_STROBE && !i_wb_stall)
-        current_state <= FETCH_WAIT_ACK;
-    else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin // not stall, and ack & no error
-        current_pc <= current_pc + 4; // PC Increment
-        o_buf_pc <= current_pc; // Load PC into buf
-        o_buf_inst <= i_wb_data;
-        current_state <= WRITE_OUT;
-    end
-    else if ((current_state == FETCH_WAIT_ACK) && (i_wb_err)) begin // ACK With Error
-        current_state <= IDLE;
-        o_buf_pc <= 0;
-        o_buf_inst <= 0;
-    end
-    else if ((current_state == WRITE_OUT) && (!i_pipe_stall)) begin
-        o_buf_inst <= 0;
-        o_buf_pc <= 0;
-        current_state <= IDLE;
+    end else begin
+        if (cache_hit) begin
+            o_buf_inst <= cache_hit_data;
+            o_buf_pc <= current_pc;
+            current_pc <= current_pc + 4;
+        end else begin
+            o_buf_inst <= 0;
+            o_buf_pc <= 0;
+        end
     end
 end
 
@@ -203,32 +221,12 @@ end
         if (($past(i_pipe_flush) || $past(i_new_pc)) && !$past(i_reset)) begin // IF flush / load new pc then clear
             assert(o_buf_pc == 0);
             assert(o_buf_inst == 0);
-            assert(current_state == IDLE);
             if ($past(i_new_pc)) begin // new PC loads pc
                 assert(current_pc == $past(i_pc));
             end else // flush preserves pc
                 assert(current_pc == $past(current_pc));
         end
     end
-
-    always @(posedge i_clk)
-        if (f_past_valid) begin
-            // IF error, we should retry
-            if (($past(current_state) == FETCH_WAIT_ACK) && $past(i_wb_err)) begin
-                assert(current_state == IDLE);
-                assert(current_pc == $past(current_pc));
-                assert(o_buf_pc == 0);
-                assert(o_buf_inst == 0);
-            end
-        end
-    
-    always @(posedge i_clk)
-        if (f_past_valid) begin // IF Success, we should see past pc in current buf, and pc should +4
-            if (current_state == WRITE_OUT) begin
-                assert(o_buf_pc == $past(current_pc));
-                assert(current_pc == $past(current_pc + 4));
-            end         
-        end
 
     always @(*) begin
         if ((current_state == FETCH_STROBE || current_state == FETCH_WAIT_ACK) && i_wb_stall)

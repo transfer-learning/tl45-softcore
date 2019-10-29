@@ -218,7 +218,7 @@ module tl45_comp(
         .o_buf_inst(fetch_buf_inst)
     );
 
-    assign opcode_breakout = fetch_buf_inst;
+    assign opcode_breakout = fetch_buf_inst[31:27];
     assign o_lwopcode = fetch_buf_pc[7:0];
 
     tl45_decode decode(

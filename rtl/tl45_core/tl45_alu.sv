@@ -61,14 +61,16 @@ localparam OP_ADD = 5'h1,
            OP_OR  = 5'h6,
            OP_XOR = 5'h7,
            OP_AND = 5'h8,
-           OP_NOT = 5'h9;
+           OP_NOT = 5'h9,
+           OP_CALL= 5'hd,
+           OP_RET = 5'he;
 
 // Check if branch is executing
 wire is_branch;
 assign is_branch = i_opcode == 5'h0C; // Branch
 
 // ALU Operation Decode from Opcode
-reg [3:0] alu_op;
+reg [4:0] alu_op;
 localparam ALUOP_NOP = 0,
            ALUOP_ADD = 1,
            ALUOP_SUB = 2,
@@ -76,7 +78,8 @@ localparam ALUOP_NOP = 0,
            ALUOP_OR  = 4,
            ALUOP_XOR = 5,
            ALUOP_NOTA= 6,
-           ALUOP_AINC= 7;
+           ALUOP_AINC= 7,
+           ALUOP_ADEC = 8;
 
 // select alu op
 always @(*)
@@ -87,6 +90,8 @@ always @(*)
     OP_OR: alu_op = ALUOP_OR;
     OP_XOR: alu_op = ALUOP_XOR;
     OP_NOT: alu_op = ALUOP_NOTA;
+    OP_CALL: alu_op = ALUOP_ADEC;
+    OP_RET: alu_op = ALUOP_AINC;
     default: alu_op = ALUOP_NOP;
     endcase
 
@@ -132,6 +137,8 @@ always @(*) begin
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
         ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end
         ALUOP_NOTA: begin alu_result = ~i_sr1_val; carry_value = 0; end
+        ALUOP_AINC: begin alu_result = i_sr1_val + 1; carry_value = 0; end
+        ALUOP_ADEC: begin alu_result = i_sr1_val - 1; carry_value = 0; end
         default: begin alu_result = i_sr1_val; carry_value = 0; end
     endcase
 end
@@ -183,7 +190,12 @@ assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
 always @(posedge i_clk) begin
-    if (is_branch || alu_op == ALUOP_NOP) begin
+    if (i_reset || o_pipe_flush) begin
+        flags <= 0;
+        o_dr <= 0;
+        o_value <= 0;
+    end
+    else if (is_branch || alu_op == ALUOP_NOP) begin
         // Branch Logic
         o_dr <= 4'h0; // Branch never writes to DR
         o_value <= 0;

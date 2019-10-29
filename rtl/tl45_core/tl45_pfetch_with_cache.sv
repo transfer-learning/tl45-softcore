@@ -94,7 +94,7 @@ wire [31:0] next_o_buf_inst;
 assign next_o_buf_inst = cache_valid[cache_index] ? cache_data[cache_word_index] : 32'h0;
 
 wire [31:0] cache_hit_data;
-assign cache_hit_data = cache_data[cache_index];
+assign cache_hit_data = cache_data[cache_word_index];
 
 wire [7:0] fetch_cache_index;
 assign fetch_cache_index = o_wb_addr[11:4];
@@ -129,19 +129,19 @@ always @(posedge i_clk) begin
         // Succeed fetching
         cache_tags[fetch_cache_index] <= fetch_cache_tag;
         cache_data[fetch_cache_word_index] <= i_wb_data;
-        if (cacheline_fill_counter == 31) begin
+        if (cacheline_fill_counter == 15) begin
             current_state <= IDLE;
             cache_valid[fetch_cache_index] <= 1'b1;
         end
         else if (!i_wb_stall || !o_wb_cyc) begin
-            o_wb_addr <= o_wb_addr + 4; // Fetch next instruction
+            o_wb_addr <= o_wb_addr + 1; // Fetch next instruction
             current_state <= FETCH_STROBE;
             cacheline_fill_counter <= cacheline_fill_counter + 1;
         end else
             current_state <= FETCH_NEXT;
     end
     else if ((current_state == FETCH_NEXT) && (!i_wb_stall || !o_wb_cyc)) begin
-        o_wb_addr <= o_wb_addr + 4;
+        o_wb_addr <= o_wb_addr + 1;
         current_state <= FETCH_STROBE;
         cacheline_fill_counter <= cacheline_fill_counter + 1;
     end 

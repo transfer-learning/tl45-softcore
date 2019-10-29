@@ -31,9 +31,18 @@ module tl45_comp(
     sdr_addr    ,
     sdr_dq      ,
     inst_decode_err,
-	ssegs
+	ssegs,
+    opcode_breakout,
+    o_lwopcode,
+    o_clk,
+    o_halt
 );
-	output wire [6:0] ssegs[8];
+    output wire [4:0] opcode_breakout;
+    output wire [7:0] o_lwopcode;
+    output wire o_clk, o_halt;
+    assign o_clk = i_clk;
+    assign o_halt = i_halt_proc;
+    output wire [6:0] ssegs[8];
 	input i_uart;
 	output o_uart;
     input wire i_halt_proc;
@@ -208,6 +217,9 @@ module tl45_comp(
         .o_buf_pc(fetch_buf_pc),
         .o_buf_inst(fetch_buf_inst)
     );
+
+    assign opcode_breakout = fetch_buf_inst;
+    assign o_lwopcode = fetch_buf_pc[7:0];
 
     tl45_decode decode(
         .i_clk(i_clk),

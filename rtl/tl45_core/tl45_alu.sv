@@ -137,8 +137,8 @@ always @(*) begin
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
         ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end
         ALUOP_NOTA: begin alu_result = ~i_sr1_val; carry_value = 0; end
-        ALUOP_AINC: begin alu_result = i_sr1_val + 1; carry_value = 0; end
-        ALUOP_ADEC: begin alu_result = i_sr1_val - 1; carry_value = 0; end
+        ALUOP_AINC: begin alu_result = i_sr2_val + 1; carry_value = 0; end
+        ALUOP_ADEC: begin alu_result = i_sr2_val - 1; carry_value = 0; end
         default: begin alu_result = i_sr1_val; carry_value = 0; end
     endcase
 end

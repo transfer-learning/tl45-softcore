@@ -96,7 +96,7 @@ always @(*)
         5'h09: decode_err = (mode != 0) || (low_imm != 0);              //  NOT
     
         5'h0C,                                                          //  JMP
-        5'h0D: decode_err = (mode != 3'b101);                           // CALL
+        5'h0D: decode_err = (mode != 3'b000);                           // CALL
         5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)         //  RET 
                                 || (sr1 != 0) || (imm != 0);
         5'h10: decode_err = (mode != 0) || (sr1 != 0);                  //   IN

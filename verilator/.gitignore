@@ -1,1 +1,3 @@
-obj_dir
+obj_dir/
+cmake-build-debug/
+build/

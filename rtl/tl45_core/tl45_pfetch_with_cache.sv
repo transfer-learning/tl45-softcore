@@ -122,7 +122,7 @@ always @(posedge i_clk) begin
         // On cache miss, go fetch
         cacheline_fill_counter <= 0;
         current_state <= FETCH_STROBE;
-        o_wb_addr <= current_pc[31:2];
+        o_wb_addr <= {current_pc[31:6], 4'b0};
     end else if (current_state == FETCH_STROBE && (!i_wb_stall)) begin
         current_state <= FETCH_WAIT_ACK;
     end else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin

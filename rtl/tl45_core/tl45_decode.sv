@@ -79,7 +79,7 @@ assign sr2_force_sp = (opcode == 5'h0D) || (opcode == 5'h0E); // CALL and RET re
 // Further stages will execute sr2 -> MEM[sr1+imm].
 //
 wire inst_sw;
-assign inst_sw = (opcode == 5'h15);
+assign inst_sw = (opcode == 5'h15) || (opcode == 5'h13);
 
 
 reg decode_err;
@@ -95,7 +95,7 @@ always @(*)
         5'h08: decode_err = !ri && ((mode != 0) || (low_imm != 0));     //  AND
         5'h09: decode_err = (mode != 0) || (low_imm != 0);              //  NOT
     
-        5'h0C,                                                          //  JMP
+        5'h0C: decode_err = (mode != 3'b101);                           //  JMP
         5'h0D: decode_err = (mode != 3'b000);                           // CALL
         5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)         //  RET 
                                 || (sr1 != 0) || (imm != 0);

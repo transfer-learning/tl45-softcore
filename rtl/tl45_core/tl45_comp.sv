@@ -161,6 +161,9 @@ module tl45_comp(
     wire [31:0] mem_buf_value;
     wire [3:0] mem_buf_dr;
 
+    wire mem_buf_ld_newpc;
+    wire [31:0] mem_buf_br_pc;
+
     // stalls & flushes
     wire stall_fetch_decode, stall_decode_rr, stall_rr_alu, stall_rr_mem, stall_alu_wb;
     wire flush_fetch_decode, flush_decode_rr, flush_rr_alu, flush_rr_mem;
@@ -206,10 +209,10 @@ module tl45_comp(
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
         .i_reset(i_reset),
-        .i_pipe_stall(stall_fetch_decode),
+        .i_pipe_stall(stall_fetch_decode || inst_decode_err),
         .i_pipe_flush(flush_fetch_decode || i_halt_proc),
-        .i_new_pc(alu_buf_ld_newpc),
-        .i_pc(alu_buf_br_pc),
+        .i_new_pc(alu_buf_ld_newpc || mem_buf_ld_newpc),
+        .i_pc(alu_buf_ld_newpc ? alu_buf_br_pc : mem_buf_br_pc),
 
         .o_wb_cyc(ifetch_o_wb_cyc),
         .o_wb_stb(ifetch_o_wb_stb),
@@ -322,7 +325,6 @@ module tl45_comp(
         .i_pipe_flush(0),
         .o_pipe_flush(flush_rr_mem),
 
-        // TOOD wishbone
         .o_wb_cyc(dfetch_o_wb_cyc),
         .o_wb_stb(dfetch_o_wb_stb),
         .o_wb_we(dfetch_o_wb_we),
@@ -339,13 +341,15 @@ module tl45_comp(
         .i_buf_sr1_val(rr_buf_sr1_val),
         .i_buf_sr2_val(rr_buf_sr2_val),
         .i_buf_imm(rr_buf_target_address_offset),
+        .i_buf_pc(rr_buf_pc),
 
         .o_fwd_dr(of1_reg_mem),
         .o_fwd_val(of1_val_mem),
 
         .o_buf_dr(mem_buf_dr),
-        .o_buf_val(mem_buf_value)
-
+        .o_buf_val(mem_buf_value),
+        .o_ld_newpc(mem_buf_ld_newpc),
+        .o_br_pc(mem_buf_br_pc)
     );
 
     tl45_writeback writeback(
@@ -557,7 +561,7 @@ wb_sevenseg sevenseg_disp(
 
 
 `ifdef VERILATOR
-    shitmem #(16) my_mem(
+    memdev #(16) my_mem(
         .i_clk(i_clk),
         .i_wb_cyc(ibus_o_wb_cyc),
         .i_wb_stb(ibus_o_wb_stb && mem_sel),

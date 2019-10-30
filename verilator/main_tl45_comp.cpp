@@ -32,8 +32,11 @@ int main(int argc, char **argv) {
 //  };
 //
 //  memcpy(ram, init, sizeof(init));
-
-  FILE *f = fopen("/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out", "r");
+  FILE *f;
+  if (argc > 1)
+    f= fopen(argv[1], "r");
+  else
+    f = fopen("/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out", "r");
   if (!f) {
     printf("Fail!\n");
     return 1;

@@ -89,12 +89,17 @@ always @(*)
         5'h00: decode_err = i_buf_inst != 0;                            //  NOP
         5'h01,                                                          //  ADD 
         5'h02,                                                          //  SUB
-        
+
+        5'h05: decode_err = ri ? (imm >= 32) : mode != 0;               // SHRA
+
         5'h06,                                                          //   OR
         5'h07,                                                          //  XOR
         5'h08: decode_err = !ri && ((mode != 0) || (low_imm != 0));     //  AND
         5'h09: decode_err = (mode != 0) || (low_imm != 0);              //  NOT
-    
+
+        5'h0A: decode_err = ri ? (imm >= 32) : mode != 0;               //  SHL
+        5'h0B: decode_err = ri ? (imm >= 32) : mode != 0;               //  SHR
+
         5'h0C: decode_err = (mode != 3'b101);                           //  JMP
         5'h0D: decode_err = (mode != 3'b000);                           // CALL
         5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)         //  RET 

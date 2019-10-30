@@ -63,7 +63,10 @@ localparam OP_ADD = 5'h1,
            OP_AND = 5'h8,
            OP_NOT = 5'h9,
            OP_CALL= 5'hd,
-           OP_RET = 5'he;
+           OP_RET = 5'he,
+           OP_SHL = 5'hA,
+           OP_SHR = 5'hB,
+           OP_SHRA= 5'h5;
 
 // Check if branch is executing
 wire is_branch;
@@ -79,7 +82,10 @@ localparam ALUOP_NOP = 0,
            ALUOP_XOR = 5,
            ALUOP_NOTA= 6,
            ALUOP_AINC= 7,
-           ALUOP_ADEC = 8;
+           ALUOP_ADEC = 8,
+           ALUOP_SHL = 9,
+           ALUOP_SHR = 10,
+           ALUOP_SHRA = 11;
 
 // select alu op
 always @(*)
@@ -92,6 +98,9 @@ always @(*)
     OP_NOT: alu_op = ALUOP_NOTA;
     OP_CALL: alu_op = ALUOP_ADEC;
     OP_RET: alu_op = ALUOP_AINC;
+    OP_SHL: alu_op = ALUOP_SHL;
+    OP_SHR: alu_op = ALUOP_SHR;
+    OP_SHRA: alu_op = ALUOP_SHRA;
     default: alu_op = ALUOP_NOP;
     endcase
 
@@ -139,6 +148,9 @@ always @(*) begin
         ALUOP_NOTA: begin alu_result = ~i_sr1_val; carry_value = 0; end
         ALUOP_AINC: begin alu_result = i_sr2_val + 4; carry_value = 0; end
         ALUOP_ADEC: begin alu_result = i_sr2_val - 4; carry_value = 0; end
+        ALUOP_SHL: begin alu_result = i_sr1_val << i_sr2_val; carry_value = 0; end
+        ALUOP_SHR: begin alu_result = i_sr1_val >> i_sr2_val; carry_value = 0; end
+        ALUOP_SHRA: begin alu_result = i_sr1_val >>> i_sr2_val; carry_value = 0; end
         default: begin alu_result = i_sr1_val; carry_value = 0; end
     endcase
 end

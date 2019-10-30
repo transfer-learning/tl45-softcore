@@ -229,8 +229,6 @@ always @(*)
 
 reg [31:0] temp_read;
 
-assign o_pipe_flush = i_pipe_flush;
-
 always @(*)
     case (current_state)
         READ_STALLED_OUT: begin

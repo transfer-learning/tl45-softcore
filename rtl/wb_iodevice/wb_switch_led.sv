@@ -1,6 +1,6 @@
 `default_nettype none
 
-module wb_sevenseg(i_clk, i_reset,
+module wb_switch_led(i_clk, i_reset,
 i_wb_cyc, i_wb_stb, i_wb_we, 
 i_wb_addr, i_wb_data, i_wb_sel,
 o_wb_ack, o_wb_stall, 
@@ -25,7 +25,7 @@ i_switches);
 
     localparam IDLE = 0,
                 RESPOND_WRITE = 1,
-                RESPOND_READ = 2
+                RESPOND_READ = 2,
                 LAST_STATE = 3;
     integer current_state;
     initial current_state = IDLE;
@@ -61,22 +61,21 @@ i_switches);
 
     always @(posedge i_clk) 
     if (i_reset) begin
-        internal_data <= 0;
+        internal_led_data <= 0;
         current_state <= IDLE;
     end
     else if ((current_state == IDLE) && i_wb_cyc && i_wb_stb) begin
     // Strobe at idle
-        current_state <= RESPOND;
         if (i_wb_we) begin
             current_state <= RESPOND_WRITE;
-            internal_data <= i_wb_data;
+            internal_led_data <= i_wb_data;
         end 
         else
             current_state <= RESPOND_READ;
     end else if ((current_state == RESPOND_WRITE || current_state == RESPOND_READ) && i_wb_cyc && i_wb_stb) begin
         // Strobe (Pipelined request)
         if (i_wb_we) begin
-            internal_data <= i_wb_data;
+            internal_led_data <= i_wb_data;
             current_state <= RESPOND_WRITE;
         end
         else
@@ -116,7 +115,7 @@ always @(*)
 always @(posedge i_clk)
 if (f_past_valid) begin
     if (!$past(i_reset) && $past(i_wb_we) && $past(i_wb_cyc) && $past(i_wb_stb))
-        assert(internal_data == $past(i_wb_data));
+        assert(internal_led_data == $past(i_wb_data));
     else if ($past(i_reset))
         assert(internal_led_data == 32'h0);
     else

@@ -38,8 +38,12 @@ module tl45_comp(
     opcode_breakout,
     o_lwopcode,
     o_clk,
-    o_halt
+    o_halt,
+    o_leds,
+    i_switches
 );
+    input wire [15:0] i_switches;
+    output wire [15:0] o_leds;
     output wire [4:0] opcode_breakout;
     output wire [7:0] o_lwopcode;
     output wire o_clk, o_halt;
@@ -458,29 +462,30 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire [31:0] sseg_data;
-wire	smpl_stall, mem_stall, sseg_stall;
+wire    [31:0] sseg_data, sw_led_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire sseg_ack;
+wire    sseg_ack, sw_led_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel;
 
 // Nothing should be assigned to the null page
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
-assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000);
+assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
+assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400004); // SWITCH LED
 
 wire	none_sel;
-assign	none_sel = (!smpl_sel)&&(!mem_sel)&&(!sseg_sel);
+assign	none_sel = (!smpl_sel)&&(!mem_sel)&&(!sseg_sel)&&(!sw_led_sel);
 
 always @(posedge i_clk)
     master_i_wb_err <= (master_o_wb_stb) && (none_sel);
 
 // Master Bus Respond
 always @(posedge i_clk)
-    master_i_wb_ack <= (smpl_ack) || (mem_ack) || sseg_ack;
+    master_i_wb_ack <= (smpl_ack) || (mem_ack) || sseg_ack || sw_led_ack;
 
 always @(posedge i_clk)
     if (smpl_ack)
@@ -489,13 +494,16 @@ always @(posedge i_clk)
         master_i_wb_data <= mem_data;
     else if (sseg_ack)
         master_i_wb_data <= sseg_data;
+    else if (sw_led_ack)
+        master_i_wb_data <= sw_led_data;
     else
         master_i_wb_data <= 32'h0;
 
 assign	master_i_wb_stall = 
            ((smpl_sel) && (smpl_stall))
         || ((mem_sel)  && (mem_stall))
-        || (sseg_sel) && (sseg_stall);
+        || (sseg_sel) && (sseg_stall)
+        || (sw_led_sel) && sw_led_stall;
 
 // Simple Device
 reg	[31:0]	smpl_register, power_counter;
@@ -559,6 +567,23 @@ wb_sevenseg sevenseg_disp(
 `endif
 );
 
+
+// Sw_LED
+wb_switch_led de2_switch_led(
+    i_clk,
+    i_reset,
+    master_o_wb_cyc,
+    (master_o_wb_stb && sw_led_sel),
+    master_o_wb_we,
+    master_o_wb_addr,
+    master_o_wb_data,
+    master_o_wb_sel,
+    sw_led_ack,
+    sw_led_stall,
+    sw_led_data,
+    o_leds,
+    i_switches
+);
 
 `ifdef VERILATOR
     memdev #(16) my_mem(

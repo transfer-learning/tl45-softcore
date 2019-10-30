@@ -69,14 +69,14 @@ i_switches);
     // Strobe at idle
         if (i_wb_we) begin
             current_state <= RESPOND_WRITE;
-            internal_led_data <= i_wb_data;
+            internal_led_data <= i_wb_data[15:0];
         end 
         else
             current_state <= RESPOND_READ;
     end else if ((current_state == RESPOND_WRITE || current_state == RESPOND_READ) && i_wb_cyc && i_wb_stb) begin
         // Strobe (Pipelined request)
         if (i_wb_we) begin
-            internal_led_data <= i_wb_data;
+            internal_led_data <= i_wb_data[15:0];
             current_state <= RESPOND_WRITE;
         end
         else

@@ -34,19 +34,25 @@ assign o_fwd_val = i_buf_val;
 
 wire do_write = i_buf_dr != 0;
 
-always @(posedge i_clk) begin
-    if (i_reset) begin
-        o_rf_en   <= 0;
-        o_rf_reg  <= 0;
-        o_rf_val  <= 0;
-    end
-    else begin
-        o_rf_en  <= do_write;
-        o_rf_reg <= i_buf_dr;
-        o_rf_val <= i_buf_val;
-    end
+always @(*) begin
+    o_rf_en = i_reset ? 0 : do_write;
+    o_rf_reg = i_reset ? 0 : i_buf_dr;
+    o_rf_val = i_reset ? 0 : i_buf_val;
 end
 
-endmodule
+//always @(posedge i_clk) begin
+//    if (i_reset) begin
+//        o_rf_en   <= 0;
+//        o_rf_reg  <= 0;
+//        o_rf_val  <= 0;
+//    end
+//    else begin
+//        o_rf_en  <= do_write;
+//        o_rf_reg <= i_buf_dr;
+//        o_rf_val <= i_buf_val;
+//    end
+//end
+
+endmodule : tl45_writeback
 
 

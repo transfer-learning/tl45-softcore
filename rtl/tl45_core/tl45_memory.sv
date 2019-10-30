@@ -274,7 +274,7 @@ always @(posedge i_clk) begin
     end
     // TODO probably not correct when wb response is on the same clock as the
     // request.
-    else if (state_wait_ack && i_wb_ack && i_wb_err) begin
+    else if (state_wait_ack && i_wb_err) begin
         // for now we'll just squash bus error as a special read value.
         // for write, whatever.
         current_state <= current_state == READ_WAIT_ACK ? (i_pipe_stall ? READ_STALLED_OUT : READ_OUT) : IDLE;

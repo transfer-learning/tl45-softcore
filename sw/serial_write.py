@@ -40,7 +40,7 @@ def write_ack(ser, address, data, verify=False):
 
     ser.write(payload.encode('ascii'))
     vprint(payload)
-    time.sleep(0.1)
+    time.sleep(0.01)
 
     while True:
         response = ser.readline().decode('ascii')
@@ -67,7 +67,7 @@ def read_ack(ser, address):
 
     ser.write(payload.encode('ascii'))
     vprint(payload)
-    time.sleep(0.1)
+    time.sleep(0.01)
 
     while True:
         response = ser.readline().decode('ascii')
@@ -94,6 +94,7 @@ def dump_file(ser, filename, base=0, fixes=None):
 
     addr = 0
     for i in range(0, len(prog), 4):
+        print('Writing {}/{}'.format(i // 4, len(prog) // 4))
         num = prog[i] << 24 | prog[i + 1] << 16 | prog[i + 2] << 8 | prog[i + 3]
         vprint(hex(num))
         if num in fixes:
@@ -101,6 +102,11 @@ def dump_file(ser, filename, base=0, fixes=None):
             num = fixes[num]
 
         write_ack(ser, base + addr * 4, num, verify=True)
+        addr += 1
+
+    for i in range(32):
+        print('Writing {}/{}'.format(i, 32))
+        write_ack(ser, base + addr * 4, 0, verify=True)
         addr += 1
 
 
@@ -138,10 +144,7 @@ with serial.Serial(serial_ifs[0], 115200, timeout=0.1) as ser:
     #     0x65F00034,
     # ]
 
-    dump_file(ser, 'a.out', fixes={
-        0x0D500100: 0x0E500100,
-        0: 0x65F00034,
-    })
+    dump_file(ser, '/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out')
 
     # for i in range(1000):
     #     write_ack(ser, 0x1000000, i)

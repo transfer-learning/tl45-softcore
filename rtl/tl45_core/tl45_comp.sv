@@ -475,7 +475,7 @@ wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel;
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
-assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400004); // SWITCH LED
+assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)&&(!mem_sel)&&(!sseg_sel)&&(!sw_led_sel);

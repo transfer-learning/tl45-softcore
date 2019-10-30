@@ -15,7 +15,7 @@ i_switches);
     output	reg     o_wb_stall;
     output	reg	    [31:0] o_wb_data;
     input   wire    [15:0] i_switches;
-    output  reg     [15:0] o_leds;
+    output  wire     [15:0] o_leds;
     
     
     initial begin
@@ -32,6 +32,7 @@ i_switches);
 
     reg [15:0] internal_led_data;
     initial internal_led_data = 0;
+    assign o_leds = internal_led_data;
 
     reg [15:0] switches, int_switches;
     initial begin

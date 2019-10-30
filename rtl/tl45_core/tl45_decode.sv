@@ -88,7 +88,7 @@ always @(*)
     case (opcode)
         5'h00: decode_err = i_buf_inst != 0;                            //  NOP
         5'h01,                                                          //  ADD 
-        5'h02,                                                          //  SUB
+        5'h02: decode_err = !ri && ((mode != 0) || (low_imm != 0));     //  SUB
 
         5'h05: decode_err = ri ? (imm >= 32) : mode != 0;               // SHRA
 

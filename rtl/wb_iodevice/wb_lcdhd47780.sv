@@ -48,7 +48,7 @@ o_disp_blon
     initial begin
         o_wb_data = 32'h0;
 
-        o_disp_on_n = 0; // TURN ON
+        o_disp_on_n = 1; // TURN ON
         o_disp_blon = 1; // BACK_LIGHT
         o_disp_en_n = 0; // EN(CLK)
         o_disp_rw = 1; // 0 = Write, 1 = READ
@@ -79,6 +79,7 @@ o_disp_blon
         o_disp_data <= 0;
         current_state <= IDLE;
         o_disp_rw <= 1;
+        o_disp_en_n <= 1;
     end
     else if ((current_state == IDLE) && i_wb_cyc && i_wb_stb) begin
     // Strobe at idle

@@ -1,0 +1,16 @@
+[options]
+mode prove
+
+[engines]
+smtbmc yices
+
+[script]
+read -formal wb_lcdhd47780.sv
+read -formal fwb_slave.v
+prep -top wb_lcdhd47780
+
+[files]
+../rtl/wb_iodevice/wb_lcdhd47780.sv
+../rtl/wishbone_formal/fwb_slave.v
+
+

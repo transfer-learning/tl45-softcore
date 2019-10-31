@@ -1,11 +1,11 @@
 `default_nettype none
 
-module wb_sevenseg(i_clk, i_reset,
+module wb_lcdhd47780(i_clk, i_reset,
 i_wb_cyc, i_wb_stb, i_wb_we, 
 i_wb_addr, i_wb_data, i_wb_sel,
 o_wb_ack, o_wb_stall, 
 o_wb_data,
-o_disp_data,
+io_disp_data,
 o_disp_rw,
 o_disp_en_n,
 o_disp_rs,
@@ -21,27 +21,43 @@ o_disp_blon
     output	reg	    [31:0] o_wb_data;
 
     output reg o_disp_blon, o_disp_rw, o_disp_en_n, o_disp_rs, o_disp_on_n;
-    output reg [7:0] o_disp_data;
+    inout wire [7:0] io_disp_data;
 
     parameter COMMAND_DELAY = 50;
 
-	assign o_wb_stall = i_reset; 
+
+    reg [7:0] i_disp_ext, i_disp;
+    reg [7:0] o_disp_data;
+    initial begin
+        i_disp_ext = 0;
+        i_disp = 0;
+        o_disp_data = 0;
+    end
+    // 2FF Sync, I know this is not suitable, but it's better than not syncing
+    always @(posedge i_clk) begin
+        {i_disp, i_disp_ext} <= {i_disp_ext, io_disp_data};
+    end
+
+    assign io_disp_data = (!o_disp_rw) ? o_disp_data : 8'bzzzz_zzzz;
+
+	assign o_wb_stall = i_reset || (i_wb_cyc ? !o_wb_ack : 0) ; 
     initial begin
         o_wb_data = 32'h0;
 
-        o_disp_data = 0; // DATA BUS
         o_disp_on_n = 0; // TURN ON
         o_disp_blon = 1; // BACK_LIGHT
-        o_disp_en_n = 1; // EN(CLK)
-        o_disp_rw = 0; // 0 = Write, 1 = READ
+        o_disp_en_n = 0; // EN(CLK)
+        o_disp_rw = 1; // 0 = Write, 1 = READ
     end
 
     integer clk_counter;
     initial clk_counter = 0;
 
     localparam IDLE = 0,
-                RESPOND = 1,
-                LAST_STATE = 2;
+                WRITE_LCD = 1,
+                WRITE_LCD_2 = 2,
+                RESPOND = 3,
+                LAST_STATE = 4;
     integer current_state;
     initial current_state = IDLE;
 
@@ -56,18 +72,42 @@ o_disp_blon
 
     always @(posedge i_clk) 
     if (i_reset) begin
-        internal_data <= 0;
+        o_disp_data <= 0;
         current_state <= IDLE;
+        o_disp_rw <= 1;
     end
     else if ((current_state == IDLE) && i_wb_cyc && i_wb_stb) begin
     // Strobe at idle
-        current_state <= RESPOND;
-        if (i_wb_we)
-            internal_data <= i_wb_data;
-    end else if ((current_state == RESPOND) && i_wb_cyc && i_wb_stb) begin
-        // Strobe (Pipelined request)
-        if (i_wb_we)
-            internal_data <= i_wb_data;
+        clk_counter <= 0;
+        o_disp_rs <= i_wb_addr[0]; // Last bit of addr (r shifted) select data / control
+        if (i_wb_we) begin
+            o_disp_data <= i_wb_data[7:0];
+            current_state <= WRITE_LCD;
+            o_disp_rw <= 0; // SWITCH TO WRITE MODE
+        end else begin
+            o_wb_data <= {24'h0, i_disp};
+            current_state <= RESPOND;
+        end
+	 end
+    else if (current_state == WRITE_LCD) begin
+        clk_counter <= clk_counter + 1;
+        if (clk_counter == COMMAND_DELAY / 2) begin
+            // RAISE EDGE
+            o_disp_en_n <= 0;
+            current_state <= WRITE_LCD_2;
+        end
+    end
+    else if (current_state == WRITE_LCD_2) begin
+        if (clk_counter == COMMAND_DELAY) begin
+            o_disp_en_n <= 1;
+            current_state <= RESPOND;
+            o_disp_rw <= 1; // Switch back to read mode
+            clk_counter <= 0;
+            o_wb_data <= 0;
+        end else
+            clk_counter <= clk_counter + 1;
+    end else if ((current_state == RESPOND) && i_wb_cyc) begin
+        current_state <= IDLE;
     end else 
         current_state <= IDLE;
 
@@ -111,4 +151,4 @@ if (f_past_valid) begin
 end
 
 `endif
-endmodule : wb_sevenseg
+endmodule

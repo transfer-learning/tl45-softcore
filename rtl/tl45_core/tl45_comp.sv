@@ -40,8 +40,16 @@ module tl45_comp(
     o_clk,
     o_halt,
     o_leds,
-    i_switches
+    i_switches,
+    io_disp_data,
+    o_disp_rw,
+    o_disp_en_n,
+    o_disp_rs,
+    o_disp_on_n,
+    o_disp_blon
 );
+    inout wire [7:0] io_disp_data;
+    output wire o_disp_rw, o_disp_blon, o_disp_en_n, o_disp_on_n, o_disp_rs;
     input wire [15:0] i_switches;
     output wire [15:0] o_leds;
     output wire [4:0] opcode_breakout;
@@ -468,14 +476,14 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall;
+wire    [31:0] sseg_data, sw_led_data, lcd_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, lcd_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack;
+wire    sseg_ack, sw_led_ack, lcd_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, lcd_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -491,12 +499,15 @@ assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
+assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h000002
+                ||master_o_wb_addr[29:0] ==     30'h000003);
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)
     &&(!mem_sel)
     &&(!sseg_sel)
     &&(!sw_led_sel)
+    &&(!lcd_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
@@ -511,6 +522,7 @@ always @(posedge i_clk)
         || (mem_ack)
         || sseg_ack
         || sw_led_ack
+        || lcd_sel
 `ifdef VERILATOR
         || v_hook_ack
 `endif
@@ -530,12 +542,15 @@ always @(posedge i_clk)
         master_i_wb_data <= sseg_data;
     else if (sw_led_ack)
         master_i_wb_data <= sw_led_data;
+    else if (lcd_ack)
+        master_i_wb_data <= lcd_data;
     else
         master_i_wb_data <= 32'h0;
 
 assign	master_i_wb_stall = 
            ((smpl_sel) && (smpl_stall))
         || ((mem_sel)  && (mem_stall))
+        || (lcd_sel && lcd_stall)
         || (sseg_sel) && (sseg_stall)
         || (sw_led_sel) && sw_led_stall;
 
@@ -601,6 +616,26 @@ wb_sevenseg sevenseg_disp(
 `endif
 );
 
+// LCDHD47780
+wb_lcdhd47780 de2_lcd(
+    i_clk,
+    reset,
+    master_o_wb_cyc,
+    (master_o_wb_stb && lcd_sel),
+    master_o_wb_we,
+    master_o_wb_addr,
+    master_o_wb_data,
+    master_o_wb_sel,
+    lcd_ack,
+    lcd_stall,
+    lcd_data,
+    io_disp_data,
+    o_disp_rw,
+    o_disp_en_n,
+    o_disp_rs,
+    o_disp_on_n,
+    o_disp_blon
+);
 
 // Sw_LED
 wb_switch_led de2_switch_led(

@@ -73,6 +73,12 @@ module tl45_comp(
     output wire [11:0] sdr_addr;
     inout wire [15:0] sdr_dq;
 
+	 
+	 // RESET
+	 wire reset;
+	 assign reset = !i_reset;
+	 
+	 
     //MEME
     wire [12:0] sdr_addr_fake;
     assign sdr_addr = sdr_addr_fake[11:0];
@@ -184,7 +190,7 @@ module tl45_comp(
 
     tl45_dprf dprf(
         .clk(i_clk),
-        .reset(i_reset),
+        .reset(reset),
         .readAdd1(dprf_reg1),
         .readAdd2(dprf_reg2),
         .dataO1(dprf_reg1_val),
@@ -200,7 +206,7 @@ module tl45_comp(
 
 //    tl45_nofetch fetch(
 //        .i_clk(i_clk),
-//        .i_reset(i_reset),
+//        .i_reset(reset),
 //        .i_pipe_stall(stall_fetch_decode),
 //        .i_pipe_flush(flush_fetch_decode),
 //        .i_new_pc(alu_buf_ld_newpc),
@@ -212,7 +218,7 @@ module tl45_comp(
     // tl45_prefetch
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .i_pipe_stall(stall_fetch_decode || inst_decode_err),
         .i_pipe_flush(flush_fetch_decode || i_halt_proc),
         .i_new_pc(alu_buf_ld_newpc || mem_buf_ld_newpc),
@@ -238,7 +244,7 @@ module tl45_comp(
 
     tl45_decode decode(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .o_pipe_stall(stall_fetch_decode),
         .i_pipe_stall(stall_decode_rr),
         .o_pipe_flush(flush_fetch_decode),
@@ -260,7 +266,7 @@ module tl45_comp(
 
     tl45_register_read rr(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .i_pipe_stall(stall_rr_alu || stall_rr_mem),
         .o_pipe_stall(stall_decode_rr),
         .i_pipe_flush(flush_rr_alu || flush_rr_mem),
@@ -298,7 +304,7 @@ module tl45_comp(
 
     tl45_alu alu(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .i_pipe_stall(stall_alu_wb),
         .o_pipe_stall(stall_rr_alu),
         .i_pipe_flush(0),
@@ -323,7 +329,7 @@ module tl45_comp(
 
     tl45_memory memory(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .i_pipe_stall(stall_alu_wb),
         .o_pipe_stall(stall_rr_mem),
         .i_pipe_flush(0),
@@ -358,7 +364,7 @@ module tl45_comp(
 
     tl45_writeback writeback(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .o_pipe_stall(stall_alu_wb),
 
         .i_buf_dr(alu_buf_dr != 0 ? alu_buf_dr : mem_buf_dr),
@@ -580,7 +586,7 @@ always @(posedge i_clk)
 // SevenSeg
 wb_sevenseg sevenseg_disp(
     i_clk,
-    i_reset,
+    reset,
     master_o_wb_cyc,
     (master_o_wb_stb && sseg_sel),
     master_o_wb_we,
@@ -599,7 +605,7 @@ wb_sevenseg sevenseg_disp(
 // Sw_LED
 wb_switch_led de2_switch_led(
     i_clk,
-    i_reset,
+    reset,
     master_o_wb_cyc,
     (master_o_wb_stb && sw_led_sel),
     master_o_wb_we,

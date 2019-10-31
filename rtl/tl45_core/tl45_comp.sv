@@ -76,8 +76,12 @@ module tl45_comp(
 	 
 	 // RESET
 	 wire reset;
+`ifdef VERILATOR
+    assign reset = i_reset;
+`else
 	 assign reset = !i_reset;
-	 
+`endif
+
 	 
     //MEME
     wire [12:0] sdr_addr_fake;

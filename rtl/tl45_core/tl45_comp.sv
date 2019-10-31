@@ -36,6 +36,7 @@ module tl45_comp(
 	ssegs,
 `endif
     opcode_breakout,
+    o_valid,
     o_lwopcode,
     o_clk,
     o_halt,
@@ -56,6 +57,7 @@ module tl45_comp(
     sdc_i_card_detect
 );
     inout wire [7:0] io_disp_data;
+    output wire o_valid;
     output wire o_disp_rw, o_disp_blon, o_disp_en_n, o_disp_on_n, o_disp_rs;
     input wire [15:0] i_switches;
     output wire [15:0] o_leds;
@@ -262,9 +264,6 @@ module tl45_comp(
         .o_buf_inst(fetch_buf_inst)
     );
 
-    assign opcode_breakout = fetch_buf_inst[31:27];
-    assign o_lwopcode = fetch_buf_pc[7:0];
-
     tl45_decode decode(
         .i_clk(i_clk),
         .i_reset(reset),
@@ -321,6 +320,10 @@ module tl45_comp(
         .o_target_address_offset(rr_buf_target_address_offset),
         .o_pc(rr_buf_pc)
     );
+
+    assign opcode_breakout = rr_buf_opcode;
+    assign o_lwopcode = rr_buf_pc[7:0];
+    assign o_valid = !(stall_rr_alu || stall_rr_mem);
 
     assign of1_reg = of1_reg_alu != 0 ? of1_reg_alu : of1_reg_mem;
     assign of1_val = of1_reg_alu != 0 ? of1_val_alu : of1_val_mem;
@@ -524,8 +527,8 @@ assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
-assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h000002
-                ||master_o_wb_addr[29:0] ==     30'h000003);
+assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
+                ||master_o_wb_addr[29:0] ==     30'h400003);
 assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b0100000000000000000010);
 
 wire	none_sel;
@@ -670,10 +673,12 @@ wb_sevenseg sevenseg_disp(
     master_o_wb_sel,
     sseg_ack,
     sseg_stall,
-    sseg_data
+    sseg_data,
 `ifndef VERILATOR
-    , ssegs
+    ssegs,
 `endif
+    fetch_buf_pc,
+    inst_decode_err
 );
 
 // LCDHD47780

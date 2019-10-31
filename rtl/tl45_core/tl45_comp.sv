@@ -41,12 +41,19 @@ module tl45_comp(
     o_halt,
     o_leds,
     i_switches,
+
     io_disp_data,
     o_disp_rw,
     o_disp_en_n,
     o_disp_rs,
     o_disp_on_n,
-    o_disp_blon
+    o_disp_blon,
+
+    sdc_o_cs_n,
+    sdc_o_sck,
+    sdc_o_mosi,
+    sdc_i_miso,
+    sdc_i_card_detect
 );
     inout wire [7:0] io_disp_data;
     output wire o_disp_rw, o_disp_blon, o_disp_en_n, o_disp_on_n, o_disp_rs;
@@ -81,11 +88,19 @@ module tl45_comp(
     output wire [11:0] sdr_addr;
     inout wire [15:0] sdr_dq;
 
-	 
+    // SD Card SPI
+    output	wire		sdc_o_cs_n, sdc_o_sck, sdc_o_mosi;
+	input	wire		sdc_i_miso, sdc_i_card_detect;
+
+
 	 // RESET
 	 wire reset;
+`ifdef VERILATOR
+    assign reset = i_reset;
+`else
 	 assign reset = !i_reset;
-	 
+`endif
+
 	 
     //MEME
     wire [12:0] sdr_addr_fake;
@@ -476,14 +491,14 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, lcd_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, lcd_stall;
+wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack, lcd_ack;
+wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, lcd_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -495,18 +510,30 @@ reg v_hook_stall;
 `endif
 
 // Nothing should be assigned to the null page
+//
+// 0000 0000 0000 0000 0000 0000 0000 00
+// 0000 0000 0xxx xxxx xxxx xxxx xxxx xx - DRAM     8MB
+// 0000 0000 1xxx xxxx xxxx xxxx xxxx xx - SCOMP    8MB
+//         1 0000 0000 0000 0000 0000 00 - SSEG
+//         1 0000 0000 0000 0000 0000 01 - SW/LEDS
+//         1 0000 0000 0000 0000 0000 1x - LCD
+//         1 0000 0000 0000 0000 0010 xx - SD Card
+//         1 0011 1111 11xx xxxx xxxx xx - Verilator
+
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
-assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
-                ||master_o_wb_addr[29:0] ==     30'h400003);
+assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h000002
+                ||master_o_wb_addr[29:0] ==     30'h000003);
+assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b0100000000000000000010);
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)
     &&(!mem_sel)
     &&(!sseg_sel)
     &&(!sw_led_sel)
+    && (!sdc_sel)
     &&(!lcd_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
@@ -522,6 +549,7 @@ always @(posedge i_clk)
         || (mem_ack)
         || sseg_ack
         || sw_led_ack
+        || sdc_ack
         || lcd_ack
 `ifdef VERILATOR
         || v_hook_ack
@@ -542,6 +570,8 @@ always @(posedge i_clk)
         master_i_wb_data <= sseg_data;
     else if (sw_led_ack)
         master_i_wb_data <= sw_led_data;
+    else if (sdc_ack)
+        master_i_wb_data <= sdc_data;
     else if (lcd_ack)
         master_i_wb_data <= lcd_data;
     else
@@ -550,8 +580,9 @@ always @(posedge i_clk)
 assign	master_i_wb_stall = 
            ((smpl_sel) && (smpl_stall))
         || ((mem_sel)  && (mem_stall))
-        || (lcd_sel && lcd_stall)
         || (sseg_sel) && (sseg_stall)
+        || (sdc_sel) && (sdc_stall)
+        || (lcd_sel && lcd_stall)
         || (sw_led_sel) && sw_led_stall;
 
 // Simple Device
@@ -597,6 +628,35 @@ always @(posedge i_clk)
         bus_err_address <= master_o_wb_addr; // possibly wrong
 
 // IO Devices
+
+    wire sdc_int;
+    wire [31:0] sdc_debug;
+
+    sdspi sdcard(
+        .i_clk(i_clk),
+
+        .i_wb_cyc(master_o_wb_cyc),
+        .i_wb_stb(master_o_wb_stb && sdc_sel),
+        .i_wb_we(master_o_wb_we),
+        // remap address to what sdspi expects
+        .i_wb_addr(master_o_wb_addr[1:0]),
+        .i_wb_data(master_o_wb_data),
+        .i_wb_sel(master_o_wb_sel),
+        .o_wb_stall(sdc_stall),
+        .o_wb_ack(sdc_ack),
+        .o_wb_data(sdc_data),
+
+        .o_cs_n(sdc_o_cs_n),
+        .o_sck(sdc_o_sck),
+        .o_mosi(sdc_o_mosi),
+        .i_miso(sdc_i_miso),
+        .i_card_detect(sdc_i_card_detect),
+
+        .o_int(sdc_int),
+        .i_bus_grant(1),
+        .o_debug(sdc_debug)
+    );
+
 
 // SevenSeg
 wb_sevenseg sevenseg_disp(

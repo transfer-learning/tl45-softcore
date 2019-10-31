@@ -2,6 +2,7 @@
 // Created by Will Gulian on 10/27/19.
 //
 
+#include <iostream>
 #include "testbench.h"
 #include "Vtl45_comp.h"
 #include "wb_slave.h"
@@ -36,27 +37,6 @@ int main(int argc, char **argv) {
 
   auto &ram = tb->m_core->tl45_comp__DOT__my_mem__DOT__mem;
 
-  // TODO jump encoding should not be shifted now
-  // TODO SW encoding wrong
-
-//  uint32_t init[] = {
-//      0x0D100000,
-//      0x0D200001,
-//      0x0D30000A,
-//      0x0E500100,
-//      0x65400034,
-//      0x08112000,
-//      0x08420000,
-//      0x08210000,
-//      0x08140000,
-//      0xA9250000,
-//      0x0D33FFFF,
-//      0x65F00010,
-//      0x08402000,
-//      0x65F00034,
-//  };
-//
-//  memcpy(ram, init, sizeof(init));
   FILE *f;
   if (argc > 1)
     f = fopen(argv[1], "r");
@@ -90,7 +70,7 @@ int main(int argc, char **argv) {
   printf("Initialized memory with %zu words\n", mem_ptr);
   fclose(f);
 
-  tb->opentrace("trace.vcd");
+//  tb->opentrace("trace.vcd");
 
   CData unused;
 
@@ -107,10 +87,19 @@ int main(int argc, char **argv) {
 
   SerialDevice s(bus);
 
-  while (!tb->done() && tb->m_tickcount < 100 * 20) {
+  while (!tb->done() /* && tb->m_tickcount < 100 * 20*/) {
     tb->tick();
 
     s.eval();
+
+    if (tb->m_tickcount % 100000 == 0) {
+      std::cout << "SP: " << std::hex << tb->m_core->tl45_comp__DOT__dprf__DOT__registers[14] << "\n";
+      std::cout << "PC: " << std::hex << tb->m_core->tl45_comp__DOT__decode__DOT__i_buf_pc << "\n";
+
+      if (tb->m_core->tl45_comp__DOT__decode__DOT__decode_err) {
+        exit(5);
+      }
+    }
 
 //    printf("%d\n", tb->m_core->tl45_comp__DOT__master_i_wb_data);
   }

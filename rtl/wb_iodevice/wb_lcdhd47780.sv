@@ -20,7 +20,8 @@ o_disp_blon
     output	wire    o_wb_stall;
     output	reg	    [31:0] o_wb_data;
 
-    output reg o_disp_blon, o_disp_rw, o_disp_en_n, o_disp_rs, o_disp_on_n;
+    output reg o_disp_blon, o_disp_rw, o_disp_en_n, o_disp_rs;
+    output wire o_disp_on_n;
     inout wire [7:0] io_disp_data;
 
 `ifdef FORMAL
@@ -29,7 +30,7 @@ o_disp_blon
     parameter COMMAND_DELAY = 50;
 `endif
 
-
+    assign o_disp_on_n = !i_reset;
     reg [7:0] i_disp_ext, i_disp;
     reg [7:0] o_disp_data;
     initial begin

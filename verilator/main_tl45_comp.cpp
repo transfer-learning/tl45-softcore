@@ -4,6 +4,31 @@
 
 #include "testbench.h"
 #include "Vtl45_comp.h"
+#include "wb_slave.h"
+
+class SerialDevice : public WB_Slave {
+public:
+  explicit SerialDevice(WB_Bus &bus) : WB_Slave(bus) {}
+
+  bool getData(unsigned int address, bool we, unsigned int &data) override {
+
+    if (we) {
+      char c = ' ';
+      if (isprint((int) data)) {
+        c = (char) data;
+      }
+
+      printf(" Got %x: %x %c\n", address, data, c);
+    } else {
+      data = 0xdeadbeef;
+      printf("Sent %x: %x\n", address, data);
+    }
+
+
+
+    return true;
+  }
+};
 
 int main(int argc, char **argv) {
   Verilated::commandArgs(argc, argv);
@@ -34,7 +59,7 @@ int main(int argc, char **argv) {
 //  memcpy(ram, init, sizeof(init));
   FILE *f;
   if (argc > 1)
-    f= fopen(argv[1], "r");
+    f = fopen(argv[1], "r");
   else
     f = fopen("/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out", "r");
   if (!f) {
@@ -57,30 +82,37 @@ int main(int argc, char **argv) {
 
     if (read == 4) {
       ram[mem_ptr] = temp[0u] << 24u | temp[1u] << 16u | temp[2u] << 8u | temp[3u];
-      printf("0x%08x\n", ram[mem_ptr]);
       read = 0;
       mem_ptr++;
     }
   }
 
+  printf("Initialized memory with %zu words\n", mem_ptr);
   fclose(f);
-
-
-//  ram[0] = 0x0d100001; // ADD r1, r0, 1
-//  ram[1] = 0x08111000; // ADD r1, r1, r1
-//  ram[2] = 0x08111000; // ADD r1, r1, r1
-//  ram[3] = 0x08111000; // ADD r1, r1, r1
-
-//  ram[0] = 0x0d106969; // ADD r1, r0, 0x6969
-//  ram[1] = 0b10101001000100000100001001000000;
-//  ram[5] = 0b10100001001000000100001001000100;
-//  ram[6] = 0b10100001001100000100001001000000;
-
 
   tb->opentrace("trace.vcd");
 
-  while(!tb->done() && tb->m_tickcount < 100 * 20) {
+  CData unused;
+
+  WB_Bus bus(
+      tb->m_core->tl45_comp__DOT__master_o_wb_cyc,
+      tb->m_core->tl45_comp__DOT__v_hook_stb,
+      tb->m_core->tl45_comp__DOT__master_o_wb_we,
+      tb->m_core->tl45_comp__DOT__master_o_wb_addr,
+      tb->m_core->tl45_comp__DOT__master_o_wb_data,
+      tb->m_core->tl45_comp__DOT__v_hook_ack,
+      unused,
+      tb->m_core->tl45_comp__DOT__v_hook_data
+  );
+
+  SerialDevice s(bus);
+
+  while (!tb->done() && tb->m_tickcount < 100 * 20) {
     tb->tick();
+
+    s.eval();
+
+//    printf("%d\n", tb->m_core->tl45_comp__DOT__master_i_wb_data);
   }
 
   exit(EXIT_SUCCESS);

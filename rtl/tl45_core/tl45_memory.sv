@@ -140,9 +140,9 @@ reg [3:0] wb_sel_val;
 always @(*)
     if (is_byte_operation)
         case(mem_addr[1:0])
-            0: wb_sel_val = 4'b0001;
-            1: wb_sel_val = 4'b0010;
-            2: wb_sel_val = 4'b0100;
+            3: wb_sel_val = 4'b0001;
+            2: wb_sel_val = 4'b0010;
+            1: wb_sel_val = 4'b0100;
             default: wb_sel_val = 4'b1000;
         endcase
     else
@@ -152,9 +152,9 @@ reg [31:0] write_data;
 always @(*)
     if (is_byte_operation)
         case(mem_addr[1:0])
-            0: write_data = wr_val;
-            1: write_data = wr_val << 8;
-            2: write_data = wr_val << 16;
+            3: write_data = wr_val;
+            2: write_data = wr_val << 8;
+            1: write_data = wr_val << 16;
             default: write_data = wr_val << 24;
         endcase
     else if (is_call)
@@ -174,9 +174,9 @@ reg [7:0] shifted_i_data;
 always @(*)
     if (is_byte_operation) begin
         case(mem_addr[1:0])
-            0: shifted_i_data = trunc_32_to_8(i_wb_data);
-            1: shifted_i_data = trunc_32_to_8(i_wb_data >> 8);
-            2: shifted_i_data = trunc_32_to_8(i_wb_data >> 16);
+            3: shifted_i_data = trunc_32_to_8(i_wb_data);
+            2: shifted_i_data = trunc_32_to_8(i_wb_data >> 8);
+            1: shifted_i_data = trunc_32_to_8(i_wb_data >> 16);
             default: shifted_i_data = trunc_32_to_8(i_wb_data >> 24);
         endcase
         if (i_buf_opcode == 5'h0F) // LWSE

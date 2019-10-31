@@ -471,6 +471,15 @@ wire    sseg_ack, sw_led_ack;
 
 wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel;
 
+`ifdef VERILATOR
+reg	    [31:0]	v_hook_data; // Simple Device
+reg v_hook_ack;
+reg v_hook_stall;
+
+    wire v_hook_stb;
+    assign v_hook_stb = (master_o_wb_addr[29:12] == 18'h4ff) && master_o_wb_stb;
+`endif
+
 // Nothing should be assigned to the null page
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
@@ -478,16 +487,35 @@ assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 
 wire	none_sel;
-assign	none_sel = (!smpl_sel)&&(!mem_sel)&&(!sseg_sel)&&(!sw_led_sel);
+assign	none_sel = (!smpl_sel)
+    &&(!mem_sel)
+    &&(!sseg_sel)
+    &&(!sw_led_sel)
+`ifdef VERILATOR
+    && (!v_hook_stb)
+`endif
+    ;
 
 always @(posedge i_clk)
     master_i_wb_err <= (master_o_wb_stb) && (none_sel);
 
 // Master Bus Respond
 always @(posedge i_clk)
-    master_i_wb_ack <= (smpl_ack) || (mem_ack) || sseg_ack || sw_led_ack;
+    master_i_wb_ack <= (smpl_ack)
+        || (mem_ack)
+        || sseg_ack
+        || sw_led_ack
+`ifdef VERILATOR
+        || v_hook_ack
+`endif
+        ;
 
 always @(posedge i_clk)
+`ifdef VERILATOR
+    if (v_hook_ack)
+        master_i_wb_data <= v_hook_data;
+    else
+`endif
     if (smpl_ack)
         master_i_wb_data <= smpl_data;
     else if (mem_ack)
@@ -708,6 +736,6 @@ hbbus	genbus(i_clk,
 		// The return transport wires
 		tx_stb, tx_data, tx_busy);
 `endif
-
 endmodule : tl45_comp
+
 

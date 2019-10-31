@@ -66,12 +66,12 @@ template<class MODULE> struct TESTBENCH {
     //
     //	Dump values to our trace file
     //
-    if(true) m_trace->dump(10*m_tickcount-2);
+    if(m_trace) m_trace->dump(10*m_tickcount-2);
 
     // Repeat for the positive edge of the clock
     m_core->i_clk = 1;
     m_core->eval();
-    if(true) m_trace->dump(10*m_tickcount);
+    if(m_trace) m_trace->dump(10*m_tickcount);
 
     // Now the negative edge
     m_core->i_clk = 0;

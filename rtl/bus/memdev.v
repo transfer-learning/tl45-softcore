@@ -102,14 +102,14 @@ module	memdev(i_clk, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel
 	begin
 		o_wb_data <= mem[w_addr];
 
-		if ((w_wstb)&&(w_sel[0]))
-			mem[w_addr][ 7: 0] <= w_data[7:0];
 		if ((w_wstb)&&(w_sel[3]))
 			mem[w_addr][31:24] <= w_data[31:24];
 		if ((w_wstb)&&(w_sel[2]))
 			mem[w_addr][23:16] <= w_data[23:16];
 		if ((w_wstb)&&(w_sel[1]))
 			mem[w_addr][15: 8] <= w_data[15:8];
+		if ((w_wstb)&&(w_sel[0]))
+			mem[w_addr][ 7: 0] <= w_data[7:0];
 
 		o_wb_ack <= (w_stb);
 	end

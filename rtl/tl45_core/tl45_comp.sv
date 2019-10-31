@@ -40,6 +40,14 @@ module tl45_comp(
     o_lwopcode,
     o_clk,
     o_halt,
+    out_wb_stb,
+    out_wb_err,
+    out_wb_ack,
+    out_wb_cyc,
+    out_wb_stall,
+    out_fetch_cache_hit,
+
+
     o_leds,
     i_switches,
 
@@ -56,6 +64,8 @@ module tl45_comp(
     sdc_i_miso,
     sdc_i_card_detect
 );
+    output wire out_wb_stb,out_wb_err,out_wb_ack,out_wb_cyc, out_wb_stall, out_fetch_cache_hit;
+
     inout wire [7:0] io_disp_data;
     output wire o_valid;
     output wire o_disp_rw, o_disp_blon, o_disp_en_n, o_disp_on_n, o_disp_rs;
@@ -79,7 +89,7 @@ module tl45_comp(
 
     // SDRAM IO
     output wire sdram_clk;
-    assign sdram_clk = i_clk;
+    // assign sdram_clk = i_clk;
     output wire sdr_cs_n;
     output wire sdr_cke;
     output wire sdr_ras_n;
@@ -105,8 +115,8 @@ module tl45_comp(
 
 	 
     //MEME
-    wire [12:0] sdr_addr_fake;
-    assign sdr_addr = sdr_addr_fake[11:0];
+    //wire [12:0] sdr_addr_fake;
+    //assign sdr_addr = sdr_addr_fake[11:0];
 
     // Memory Bus Hierarchy
     // * - denotes higher priority
@@ -129,10 +139,18 @@ module tl45_comp(
     wire [29:0] master_o_wb_addr;
     wire [31:0] master_o_wb_data;
     wire [3:0] master_o_wb_sel;
-    
+
     reg master_i_wb_ack, master_i_wb_err;
     wire master_i_wb_stall;
     reg [31:0] master_i_wb_data;
+
+    // WISHBONE BREAKOUT
+    assign out_wb_ack = master_i_wb_ack;
+    assign out_wb_cyc = master_o_wb_cyc;
+    assign out_wb_err = master_i_wb_err;
+    assign out_wb_stb = master_o_wb_stb;
+    assign out_wb_stall = master_i_wb_stall;
+
 
     // dbgbus Wishbone
     wire dbgbus_o_wb_cyc, dbgbus_o_wb_stb, dbgbus_o_wb_we;
@@ -243,7 +261,7 @@ module tl45_comp(
     // tl45_prefetch
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
-        .i_reset(reset),
+        .i_reset(reset || i_halt_proc),
         .i_pipe_stall(stall_fetch_decode || inst_decode_err),
         .i_pipe_flush(flush_fetch_decode || i_halt_proc),
         .i_new_pc(alu_buf_ld_newpc || mem_buf_ld_newpc),
@@ -261,7 +279,8 @@ module tl45_comp(
         .i_wb_data(ifetch_i_wb_data),
 
         .o_buf_pc(fetch_buf_pc),
-        .o_buf_inst(fetch_buf_inst)
+        .o_buf_inst(fetch_buf_inst),
+        .o_cache_hit(out_fetch_cache_hit)
     );
 
     tl45_decode decode(
@@ -635,7 +654,10 @@ always @(posedge i_clk)
     wire sdc_int;
     wire [31:0] sdc_debug;
 
-    sdspi sdcard(
+    sdspi #(
+        .OPT_SPI_ARBITRATION(0),
+        .OPT_CARD_DETECT(0)
+    ) sdcard(
         .i_clk(i_clk),
 
         .i_wb_cyc(master_o_wb_cyc),
@@ -653,10 +675,10 @@ always @(posedge i_clk)
         .o_sck(sdc_o_sck),
         .o_mosi(sdc_o_mosi),
         .i_miso(sdc_i_miso),
-        .i_card_detect(sdc_i_card_detect),
+        .i_card_detect(1'b1),
 
         .o_int(sdc_int),
-        .i_bus_grant(1),
+        .i_bus_grant(1'b1),
         .o_debug(sdc_debug)
     );
 
@@ -734,29 +756,61 @@ wb_switch_led de2_switch_led(
         .o_wb_data(mem_data)
     );
 `else
-	wire	[15:0]	ram_data;
-	wire		ram_drive_data;
-	reg	[15:0]	r_ram_data;
-    // real mem
-    assign sdr_dq = (ram_drive_data) ? ram_data : 16'bzzzz_zzzz_zzzz_zzzz;
-	reg	[15:0]	r_ram_data_ext_clk;
+	// wire	[15:0]	ram_data;
+	// wire		ram_drive_data;
+	// reg	[15:0]	r_ram_data;
+    // // real mem
+    // assign sdr_dq = (ram_drive_data) ? ram_data : 16'bzzzz_zzzz_zzzz_zzzz;
+	// reg	[15:0]	r_ram_data_ext_clk;
 
-    // 2FF Sync
-	always @(posedge i_clk)
-		r_ram_data_ext_clk <= sdr_dq;
-	always @(posedge i_clk)
-		r_ram_data <= r_ram_data_ext_clk;
+    // // 2FF Sync
+	// always @(posedge i_clk)
+	// 	r_ram_data_ext_clk <= sdr_dq;
+	// always @(posedge i_clk)
+	// 	r_ram_data <= r_ram_data_ext_clk;
 
-	wire [31:0] sdram_debug;
+	// wire [31:0] sdram_debug;
 
-	wbsdram yeetmemory(i_clk,
-		master_o_wb_cyc, (mem_sel && master_o_wb_stb), master_o_wb_we, 
-        {11'b0, master_o_wb_addr[11:0]}, master_o_wb_data, master_o_wb_sel,
-			mem_ack, mem_stall, mem_data,
-		sdr_cs_n, sdr_cke, sdr_ras_n, sdr_cas_n, sdr_we_n,
-			sdr_ba, sdr_addr_fake,
-			ram_drive_data, r_ram_data, ram_data, sdr_dqm,
-		sdram_debug);
+	// wbsdram yeetmemory(i_clk,
+	// 	master_o_wb_cyc, (mem_sel && master_o_wb_stb), master_o_wb_we, 
+    //     master_o_wb_addr, master_o_wb_data, master_o_wb_sel,
+	// 		mem_ack, mem_stall, mem_data,
+	// 	sdr_cs_n, sdr_cke, sdr_ras_n, sdr_cas_n, sdr_we_n,
+	// 		sdr_ba, sdr_addr_fake,
+	// 		ram_drive_data, r_ram_data, ram_data, sdr_dqm,
+	// 	sdram_debug);
+
+    sdram #(
+        .SDRAM_MHZ(50),
+        .SDRAM_ADDR_W(22),
+        .SDRAM_COL_W(8),
+        .SDRAM_TARGET("ALTERA") // This is fake news, but whatever
+    ) memram (
+        i_clk,
+        i_reset,
+        
+        (mem_sel && master_o_wb_stb),
+        master_o_wb_we,
+        master_o_wb_sel,
+        master_o_wb_cyc,
+        {master_o_wb_addr, 2'h0},
+        master_o_wb_data,
+        mem_data,
+        mem_stall,
+        mem_ack,
+
+        sdram_clk,
+        sdr_cke,
+        sdr_cs_n,
+        sdr_ras_n,
+        sdr_cas_n,
+        sdr_we_n,
+        sdr_dqm,
+        sdr_addr,
+        sdr_ba,
+        sdr_dq
+    );
+
 `endif
 
     // Misc

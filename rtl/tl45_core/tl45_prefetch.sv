@@ -13,7 +13,6 @@ module tl45_prefetch(
     // Buffer
     o_buf_pc, o_buf_inst
 );
-
 input wire i_clk, i_reset; // Sys CLK, Reset
 input wire i_pipe_stall, i_pipe_flush; // Stall, Flush
 

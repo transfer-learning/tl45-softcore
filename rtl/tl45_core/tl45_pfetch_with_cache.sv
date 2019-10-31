@@ -11,8 +11,11 @@ module tl45_pfetch_with_cache(
     i_wb_ack, i_wb_stall, i_wb_err,
     i_wb_data,
     // Buffer
-    o_buf_pc, o_buf_inst
+    o_buf_pc, o_buf_inst,
+    o_cache_hit
 );
+
+output wire o_cache_hit;
 
 input wire i_clk, i_reset; // Sys CLK, Reset
 input wire i_pipe_stall, i_pipe_flush; // Stall, Flush
@@ -88,6 +91,8 @@ assign cache_index = current_pc[13:6];
 assign cache_word_index = current_pc[13:2];
 assign cache_hit = (current_pc[31:14] == {9'h0, cache_tags[cache_index]})
                 && (cache_valid[cache_index]); // Cache Hit
+// DEBUG CACHE HIT
+assign o_cache_hit = cache_hit;
 wire [31:0] next_o_buf_pc;
 assign next_o_buf_pc = cache_valid[cache_index] ? current_pc : 32'h0;
 wire [31:0] next_o_buf_inst;

@@ -503,8 +503,8 @@ assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
-assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h000002
-                ||master_o_wb_addr[29:0] ==     30'h000003);
+assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
+                ||master_o_wb_addr[29:0] ==     30'h400003);
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)
@@ -526,7 +526,7 @@ always @(posedge i_clk)
         || (mem_ack)
         || sseg_ack
         || sw_led_ack
-        || lcd_sel
+        || lcd_ack
 `ifdef VERILATOR
         || v_hook_ack
 `endif

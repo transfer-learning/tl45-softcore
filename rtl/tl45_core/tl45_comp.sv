@@ -787,7 +787,7 @@ wb_switch_led de2_switch_led(
         .SDRAM_TARGET("ALTERA") // This is fake news, but whatever
     ) memram (
         i_clk,
-        i_reset,
+        reset,
         
         (mem_sel && master_o_wb_stb),
         master_o_wb_we,

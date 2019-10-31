@@ -12,16 +12,18 @@ i_switches);
     input	wire	[31:0]	i_wb_data;
     input	wire	[3:0]	i_wb_sel;
     output	reg	    o_wb_ack;
-    output	reg     o_wb_stall;
+    output	wire		o_wb_stall;
     output	reg	    [31:0] o_wb_data;
     input   wire    [15:0] i_switches;
     output  wire     [15:0] o_leds;
     
     
     initial begin
-        o_wb_stall = 0;
         o_wb_data = 32'h0;
     end
+	 
+	 assign o_wb_stall = i_reset;
+
 
     localparam IDLE = 0,
                 RESPOND_WRITE = 1,

@@ -46,7 +46,7 @@ module tl45_comp(
     out_wb_cyc,
     out_wb_stall,
     out_fetch_cache_hit,
-
+    i_sw16,
 
     o_leds,
     i_switches,
@@ -64,6 +64,7 @@ module tl45_comp(
     sdc_i_miso,
     sdc_i_card_detect
 );
+    input i_sw16;
     output wire out_wb_stb,out_wb_err,out_wb_ack,out_wb_cyc, out_wb_stall, out_fetch_cache_hit;
 
     inout wire [7:0] io_disp_data;
@@ -259,6 +260,7 @@ module tl45_comp(
 //    );
 
     // tl45_prefetch
+	 wire [3:0] fetch_current_state;
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
         .i_reset(reset || i_halt_proc),
@@ -280,7 +282,8 @@ module tl45_comp(
 
         .o_buf_pc(fetch_buf_pc),
         .o_buf_inst(fetch_buf_inst),
-        .o_cache_hit(out_fetch_cache_hit)
+        .o_cache_hit(out_fetch_cache_hit),
+        .current_state(fetch_current_state)
     );
 
     tl45_decode decode(
@@ -699,8 +702,8 @@ wb_sevenseg sevenseg_disp(
 `ifndef VERILATOR
     ssegs,
 `endif
-    fetch_buf_pc,
-    inst_decode_err
+    (i_sw16 ? {master_o_wb_addr[27:0], fetch_current_state} : fetch_buf_pc),
+    inst_decode_err || i_sw16
 );
 
 // LCDHD47780

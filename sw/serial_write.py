@@ -3,12 +3,13 @@ from __future__ import print_function
 import glob
 import sys
 import time
-
+import argparse
+import struct
 import serial
 
 IO_SEVEN_SEG = 0x1000000
 
-VERBOSE = True
+VERBOSE = False
 
 # hexes = []
 # with open(sys.argv[1]) as f:
@@ -40,7 +41,6 @@ def write_ack(ser, address, data, verify=False):
 
     ser.write(payload.encode('ascii'))
     vprint(payload)
-    time.sleep(0.01)
 
     while True:
         response = ser.readline().decode('ascii')
@@ -49,9 +49,6 @@ def write_ack(ser, address, data, verify=False):
             break
         if response == '':
             raise ValueError('didnt ACK')
-
-    # time.sleep(0.1)
-
     if verify:
         read_val = read_ack(ser, address)
         # print(read_val, data)
@@ -66,8 +63,9 @@ def read_ack(ser, address):
     payload = 'A' + hex(address)[2:] + 'R' + '\n'
 
     ser.write(payload.encode('ascii'))
+    ser.flush()
     vprint(payload)
-    time.sleep(0.01)
+#    time.sleep(0.05)
 
     while True:
         response = ser.readline().decode('ascii')
@@ -77,13 +75,10 @@ def read_ack(ser, address):
         if response == '':
             raise ValueError('didnt get ACK')
 
-    ack_address, _, mem = response.strip().partition('R')
-    assert len(ack_address) == 9  # R + addr
-    assert len(mem) == 8
-
-    assert address == parsehex(ack_address[1:])
-
-    # time.sleep(0.1)
+    ack_address, junk, mem = response.strip().partition('R')
+    if (len(ack_address) != 9):
+        time.sleep(0.5)
+        return read_ack(ser, address)
 
     return parsehex(mem)
 
@@ -91,11 +86,10 @@ def read_ack(ser, address):
 def dump_file(ser, filename, base=0, fixes=None, retry=5):
     prog = open(filename, 'rb').read()
     fixes = fixes or {}
-
     addr = 0
     for i in range(0, len(prog), 4):
         print('Writing File {}/{}'.format(i // 4, len(prog) // 4), end='\r')
-        num = prog[i] << 24 | prog[i + 1] << 16 | prog[i + 2] << 8 | prog[i + 3]
+        num = struct.unpack('>I', prog[i:i+4])[0]
         vprint(hex(num))
         if num in fixes:
             vprint('fixing:', hex(num), '->', hex(fixes[num]))
@@ -110,7 +104,7 @@ def dump_file(ser, filename, base=0, fixes=None, retry=5):
         else:
             raise AssertionError('gave up')
 
-        print(hex(read_ack(ser, base + addr * 4)))
+        vprint(hex(read_ack(ser, base + addr * 4)))
         addr += 1
 
     for i in range(32):
@@ -130,8 +124,12 @@ def dump_raw(ser, arr, base=0):
     for i in range(0, len(arr)):
         write_ack(ser, base + i * 4, arr[i], verify=True)
 
+argp = argparse.ArgumentParser()
+argp.add_argument('--dump', type=int, nargs='?')
+argp.add_argument('file', type=str, nargs='?')
+args = argp.parse_args()
 
-with serial.Serial(serial_ifs[0], 115200, timeout=0.1) as ser:
+with serial.Serial(serial_ifs[0], 115200, timeout=0.5) as ser:
     print('Serial Name:', ser.name)
 
     ser.reset_input_buffer()
@@ -160,17 +158,34 @@ with serial.Serial(serial_ifs[0], 115200, timeout=0.1) as ser:
     #     0x65F00034,
     # ]
 
-    dump_file(ser, '/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out')
+    if (args.dump != None):
+        write = open('dump.out', 'wb')
+        for i in range(0, args.dump, 4):
+            val = read_ack(ser, i)
+            for j in range(3, -1, -1):
+                write.write(struct.pack('B', (val >> (j*8) & 0xFF)))
+        write.flush()
+        exit(0)
+    if (args.file != None):
+        print('Dump file: ', args.file)
+        dump_file(ser, args.file)
+        exit(0)
+    print(args)
+    exit(0)
 
-    # print('\n')
+    #dump_file(ser, '/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out')
+
+    print('\n')
     #
-    # write_ack(ser, 0, 0xdeadbeef)
+    write_ack(ser, 0, 0xdeadbeef)
     #
-    # print(hex(read_ack(ser, 0)))
+    print(hex(read_ack(ser, 0)))
     #
-    # write_ack(ser, 512, 0xb0ba)
+    for i in range(0, 81920, 4):
+        print("{0:08X}".format(read_ack(ser, i)))
+    write_ack(ser, 512, 0xb0ba)
     #
-    # print(hex(read_ack(ser, 0)))
+    print(hex(read_ack(ser, 0)))
 
 
     # for i in range(4, 800, 4):

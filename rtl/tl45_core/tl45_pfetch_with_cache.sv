@@ -12,7 +12,8 @@ module tl45_pfetch_with_cache(
     i_wb_data,
     // Buffer
     o_buf_pc, o_buf_inst,
-    o_cache_hit
+    o_cache_hit,
+    current_state,
 );
 
 output wire o_cache_hit;
@@ -57,7 +58,7 @@ localparam IDLE = 0,
            FETCH_WAIT_ACK = 2,
            FETCH_NEXT = 3,
            LAST_STATE = 4;
-integer current_state;
+output reg [3:0] current_state;
 initial current_state = IDLE;
 
 // Cache Process:
@@ -128,9 +129,10 @@ always @(posedge i_clk) begin
         cacheline_fill_counter <= 0;
         current_state <= FETCH_STROBE;
         o_wb_addr <= {current_pc[31:6], 4'b0};
-    end else if (current_state == FETCH_STROBE && (!i_wb_stall)) begin
-        current_state <= FETCH_WAIT_ACK;
-    end else if ((current_state == FETCH_WAIT_ACK) && (i_wb_ack) && (!i_wb_err) && (!i_wb_stall)) begin
+    end else if (
+        (current_state == FETCH_WAIT_ACK || current_state == FETCH_STROBE) 
+        && (i_wb_ack) && (!i_wb_err)
+    ) begin // Prioritize ack success
         // Succeed fetching
         cache_tags[fetch_cache_index] <= fetch_cache_tag;
         cache_data[fetch_cache_word_index] <= i_wb_data;
@@ -145,14 +147,17 @@ always @(posedge i_clk) begin
         end else
             current_state <= FETCH_NEXT;
     end
+    else if ((current_state == FETCH_WAIT_ACK || current_state == FETCH_STROBE) && (i_wb_err)) begin
+        current_state <= IDLE;
+    end
+    else if (current_state == FETCH_STROBE && (!i_wb_stall)) begin
+        current_state <= FETCH_WAIT_ACK;
+    end
     else if ((current_state == FETCH_NEXT) && (!i_wb_stall || !o_wb_cyc)) begin
         o_wb_addr <= o_wb_addr + 1;
         current_state <= FETCH_STROBE;
         cacheline_fill_counter <= cacheline_fill_counter + 1;
     end 
-    else if ((current_state == FETCH_WAIT_ACK) && (!i_wb_stall) && (i_wb_err)) begin
-        current_state <= IDLE;
-    end
 end
 
 always @(posedge i_clk) begin

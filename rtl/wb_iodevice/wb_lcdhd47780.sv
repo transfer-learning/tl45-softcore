@@ -49,7 +49,6 @@ o_disp_blon
     initial begin
         o_wb_data = 32'h0;
 
-        o_disp_on_n = 1; // TURN ON
         o_disp_blon = 1; // BACK_LIGHT
         o_disp_en_n = 0; // EN(CLK)
         o_disp_rw = 1; // 0 = Write, 1 = READ

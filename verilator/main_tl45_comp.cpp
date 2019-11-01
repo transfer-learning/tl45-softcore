@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   printf("Initialized memory with %zu words\n", mem_ptr);
   fclose(f);
 
-//  tb->opentrace("trace.vcd");
+  tb->opentrace("trace.vcd");
 
   CData unused;
 
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 
   SerialDevice s(bus);
 
-  while (!tb->done() /* && tb->m_tickcount < 100 * 20*/) {
+  while (!tb->done()  && tb->m_tickcount < 100 * 2000) {
     tb->tick();
 
     s.eval();

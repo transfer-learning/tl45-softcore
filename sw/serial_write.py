@@ -8,7 +8,7 @@ import serial
 
 IO_SEVEN_SEG = 0x1000000
 
-VERBOSE = False
+VERBOSE = True
 
 # hexes = []
 # with open(sys.argv[1]) as f:
@@ -88,25 +88,41 @@ def read_ack(ser, address):
     return parsehex(mem)
 
 
-def dump_file(ser, filename, base=0, fixes=None):
+def dump_file(ser, filename, base=0, fixes=None, retry=5):
     prog = open(filename, 'rb').read()
     fixes = fixes or {}
 
     addr = 0
     for i in range(0, len(prog), 4):
-        print('Writing {}/{}'.format(i // 4, len(prog) // 4))
+        print('Writing File {}/{}'.format(i // 4, len(prog) // 4), end='\r')
         num = prog[i] << 24 | prog[i + 1] << 16 | prog[i + 2] << 8 | prog[i + 3]
         vprint(hex(num))
         if num in fixes:
             vprint('fixing:', hex(num), '->', hex(fixes[num]))
             num = fixes[num]
 
-        write_ack(ser, base + addr * 4, num, verify=True)
+        for _ in range(retry):
+            try:
+                write_ack(ser, base + addr * 4, num, verify=True)
+                break
+            except AssertionError:
+                print('Write error, retrying')
+        else:
+            raise AssertionError('gave up')
+
+        print(hex(read_ack(ser, base + addr * 4)))
         addr += 1
 
     for i in range(32):
-        print('Writing {}/{}'.format(i, 32))
-        write_ack(ser, base + addr * 4, 0, verify=True)
+        print('Writing Empty buf {}/{}         '.format(i, 32), end='\r')
+        for _ in range(retry):
+            try:
+                write_ack(ser, base + addr * 4, 0, verify=True)
+                break
+            except AssertionError:
+                print('Write error, retrying')
+        else:
+            raise AssertionError('gave up')
         addr += 1
 
 
@@ -145,6 +161,21 @@ with serial.Serial(serial_ifs[0], 115200, timeout=0.1) as ser:
     # ]
 
     dump_file(ser, '/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out')
+
+    # print('\n')
+    #
+    # write_ack(ser, 0, 0xdeadbeef)
+    #
+    # print(hex(read_ack(ser, 0)))
+    #
+    # write_ack(ser, 512, 0xb0ba)
+    #
+    # print(hex(read_ack(ser, 0)))
+
+
+    # for i in range(4, 800, 4):
+    #     write_ack(ser, i, 0xb0ba)
+    #     print(i, hex(read_ack(ser, 0)))
 
     # for i in range(1000):
     #     write_ack(ser, 0x1000000, i)

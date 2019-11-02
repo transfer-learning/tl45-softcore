@@ -58,12 +58,17 @@ module tl45_comp(
     o_disp_on_n,
     o_disp_blon,
 
-    sdc_o_cs_n,
+    sdc_o_cs,
     sdc_o_sck,
     sdc_o_mosi,
     sdc_i_miso,
-    sdc_i_card_detect
+	 
+	 sdm_cs,
+	 sdm_sck,
+	 sdm_mosi,
+	 sdm_miso
 );
+
     input i_sw16;
     output wire out_wb_stb,out_wb_err,out_wb_ack,out_wb_cyc, out_wb_stall, out_fetch_cache_hit;
 
@@ -102,10 +107,19 @@ module tl45_comp(
     inout wire [15:0] sdr_dq;
 
     // SD Card SPI
-    output	wire		sdc_o_cs_n, sdc_o_sck, sdc_o_mosi;
-	input	wire		sdc_i_miso, sdc_i_card_detect;
+    output	wire sdc_o_sck, sdc_o_mosi;
+	 input	wire sdc_i_miso;
+	 output wire sdc_o_cs;
+	 wire sdc_o_cs_n;
+	 assign sdc_o_cs = sdc_o_cs_n;
 
-
+	 output wire sdm_cs, sdm_sck, sdm_mosi, sdm_miso;
+	 assign sdm_cs = sdc_o_cs;
+	 assign sdm_sck = sdc_o_sck;
+	 assign sdm_mosi = sdc_o_mosi;
+	 assign sdm_miso = sdc_i_miso;
+	 
+	 
 	 // RESET
 	 wire reset;
 `ifdef VERILATOR
@@ -659,7 +673,9 @@ always @(posedge i_clk)
 
     sdspi #(
         .OPT_SPI_ARBITRATION(0),
-        .OPT_CARD_DETECT(0)
+        .OPT_CARD_DETECT(0),
+        .INITIAL_CLKDIV(7'h3e),
+        .STARTUP_CLOCKS(0)
     ) sdcard(
         .i_clk(i_clk),
 
@@ -702,7 +718,7 @@ wb_sevenseg sevenseg_disp(
 `ifndef VERILATOR
     ssegs,
 `endif
-    (i_sw16 ? {master_o_wb_addr[27:0], fetch_current_state} : fetch_buf_pc),
+    (i_sw16 ? sdc_debug : fetch_buf_pc),
     inst_decode_err || i_sw16
 );
 

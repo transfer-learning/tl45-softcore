@@ -94,29 +94,35 @@ end
 // are sent.
 
 wire start_tx;
-assign start_tx = (i_buf_opcode == 5'h10 ||   // IN
-                   i_buf_opcode == 5'h11 ||   // OUT
+assign start_tx = (i_buf_opcode == 5'h10 ||   // LHW
+                   i_buf_opcode == 5'h11 ||   // LHWSE
                    i_buf_opcode == 5'h14 ||   // LW
                    i_buf_opcode == 5'h15 ||   // SW
                    i_buf_opcode == 5'h12 ||   // LB
                    i_buf_opcode == 5'h0F ||   // LBSE
-                   i_buf_opcode == 5'h13 ||     // SB
+                   i_buf_opcode == 5'h13 ||   // SB
+                   i_buf_opcode == 5'h16 ||   // SHW
                    is_call || is_ret);
 
 wire is_io;
-assign is_io =    (i_buf_opcode == 5'h10 ||   // IN
-                   i_buf_opcode == 5'h11);    // OUT
+assign is_io =    0;
 
 wire is_write;
-assign is_write = (i_buf_opcode == 5'h11 ||   // OUT
-                   i_buf_opcode == 5'h15 ||   // SW
+assign is_write = (i_buf_opcode == 5'h15 ||   // SW
                    i_buf_opcode == 5'h13 ||   // SB
+                   i_buf_opcode == 5'h16 ||   // SHW
                    is_call);
 
 wire is_byte_operation;
 assign is_byte_operation = (i_buf_opcode == 5'h12 ||  // LB
                             i_buf_opcode == 5'h0F ||  // LBSE
                             i_buf_opcode == 5'h13 );  // SB
+
+wire is_half_word_operation;
+assign is_half_word_operation = (i_buf_opcode == 5'h10 || // LHW
+                                 i_buf_opcode == 5'h11 || // LHWSE
+                                 i_buf_opcode == 5'h16    // SHW
+                                );
 
 wire is_call, is_ret;
 assign is_call = i_buf_opcode == 5'h0D;
@@ -145,6 +151,11 @@ always @(*)
             1: wb_sel_val = 4'b0100;
             default: wb_sel_val = 4'b1000;
         endcase
+    else if (is_half_word_operation)
+        case(mem_addr[1])
+            1: wb_sel_val = 4'b0011;
+            default: wb_sel_val = 4'b1100;
+        endcase
     else
         wb_sel_val = 4'b1111;
 
@@ -157,6 +168,11 @@ always @(*)
             1: write_data = wr_val << 16;
             default: write_data = wr_val << 24;
         endcase
+    else if (is_half_word_operation)
+        case(mem_addr[1])
+            1: write_data = wr_val;
+            default: write_data = wr_val << 16;
+        endcase
     else if (is_call)
         write_data = i_buf_pc + 4;
     else
@@ -164,13 +180,17 @@ always @(*)
 
 
 // WOW Verilog, you are like Tiger
-function [7:0] trunc_32_to_8(input [31:0] val32);
-  trunc_32_to_8 = val32[7:0];
+function [15:0] trunc_32_to_8(input [31:0] val32);
+  trunc_32_to_8 = {8'h0, val32[7:0]};
+endfunction
+
+function [15:0] trunc_32_to_16(input [31:0] val32);
+  trunc_32_to_16 = val32[15:0];
 endfunction
 
 
 reg [31:0] in_data;
-reg [7:0] shifted_i_data;
+reg [15:0] shifted_i_data;
 always @(*)
     if (is_byte_operation) begin
         case(mem_addr[1:0])
@@ -180,9 +200,19 @@ always @(*)
             default: shifted_i_data = trunc_32_to_8(i_wb_data >> 24);
         endcase
         if (i_buf_opcode == 5'h0F) // LWSE
-            in_data = {{24{shifted_i_data[7]}}, shifted_i_data};
+            in_data = {{24{shifted_i_data[7]}}, shifted_i_data[7:0]};
         else
-            in_data = {24'h0, shifted_i_data};
+            in_data = {24'h0, shifted_i_data[7:0]};
+    end
+    else if (is_half_word_operation) begin
+        case(mem_addr[1])
+            1: shifted_i_data = trunc_32_to_16(i_wb_data);
+            default: shifted_i_data = trunc_32_to_16(i_wb_data >> 16);
+        endcase
+        if (i_buf_opcode == 5'h11) // LHWSE
+            in_data = {{16{shifted_i_data[15]}}, shifted_i_data};
+        else
+            in_data = {16'h0, shifted_i_data};
     end
     else
         in_data = i_wb_data;

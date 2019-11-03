@@ -13,7 +13,7 @@ module tl45_pfetch_with_cache(
     // Buffer
     o_buf_pc, o_buf_inst,
     o_cache_hit,
-    current_state,
+    current_state
 );
 
 output wire o_cache_hit;

@@ -286,7 +286,7 @@ always @(posedge i_clk) begin
         o_buf_dr <= 0;
         o_buf_val <= 0;
     end
-    if (i_pipe_stall) begin
+    else if (i_pipe_stall) begin
     end
     else if ((current_state == IDLE) && start_tx) begin
         current_state <= is_write ? WRITE_STROBE : READ_STROBE;
@@ -377,9 +377,41 @@ always @(posedge i_clk) begin
 end
 
 
+`ifdef FORMAL
+
+reg f_past_valid;
+initial f_past_valid = 0;
+always @(posedge i_clk)
+    f_past_valid <= 1;
+always @(*)
+    assert(current_state < LAST_STATE);
+
+initial assume(i_reset); // start in reset
+initial	assume(!i_wb_ack);
+initial	assume(!i_wb_err);
+
+always @(posedge i_clk) begin
+    if ($past(i_reset)) begin
+        assert(current_state == IDLE); // We Can Reset
+    end
+end
+// BUS Verify
+    wire [3:0] f_nreqs, f_nacks, f_outstanding;
+    fwb_master #(
+            .AW(30),
+            .DW(32),
+            .F_MAX_STALL(0),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(0),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wbm(i_clk, i_reset,
+			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
+			i_wb_ack, i_wb_stall, 32'h0, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
+
+`endif
 
 
-
-endmodule : tl45_memory
+endmodule
 
 

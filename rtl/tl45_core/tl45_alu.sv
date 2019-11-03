@@ -141,7 +141,8 @@ end
 // Main ALU
 always @(*) begin
     case(alu_op)
-        ALUOP_ADD, ALUOP_SUB: {carry_value, alu_result} = i_sr1_val + opt_b_2complement;
+        ALUOP_ADD: { carry_value, alu_result } = i_sr1_val + i_sr1_val;
+        ALUOP_SUB: { carry_value, alu_result } = i_sr1_val - i_sr2_val;
         ALUOP_AND: begin alu_result = i_sr1_val & i_sr2_val; carry_value = 0; end
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
         ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end
@@ -176,19 +177,19 @@ reg do_jump;
 always @(*) begin
     case(i_jmp_cond)
         0: do_jump = j_OF; // jo
-        1: do_jump = ~j_OF; // jno
+        1: do_jump = !j_OF; // jno
         2: do_jump = j_SF; // js
-        3: do_jump = ~j_SF; // jns
+        3: do_jump = !j_SF; // jns
         4: do_jump = j_ZF; // je
-        5: do_jump = ~j_ZF; // jne
-        6: do_jump = j_CF; // je
-        7: do_jump = ~j_CF; // jne
+        5: do_jump = !j_ZF; // jne
+        6: do_jump = j_CF; // jb
+        7: do_jump = !j_CF; // jnb
         8: do_jump = (j_CF|j_ZF); // jbe
-        9: do_jump = (~j_CF) && (~j_ZF); // ja
+        9: do_jump = (!j_CF) && (!j_ZF); // ja
         10:do_jump = j_SF ^ j_OF; // jl
         11:do_jump = (j_SF == j_OF); // jge
         12:do_jump = j_ZF || (j_SF ^ j_OF); // jle
-        13:do_jump = (~j_ZF) && (j_SF == j_OF); // jg
+        13:do_jump = (!j_ZF) && (j_SF == j_OF); // jg
         default: do_jump = 1; // jmp
     endcase
 end

@@ -105,7 +105,7 @@ always @(*)
     endcase
 
 // optional b 2complememt
-reg [31:0] opt_b_2complement;
+reg [32:0] opt_b_2complement;
 // ALU Computaion Result
 reg [31:0] alu_result;
 
@@ -135,14 +135,13 @@ end
 // Combinational Logic for calculating opt_b_2comp
 // 2 complement is computed if op==subtract
 always @(*) begin
-    opt_b_2complement = (alu_op == ALUOP_SUB) ? (~i_sr2_val + 1) : i_sr2_val;
+    opt_b_2complement = (alu_op == ALUOP_SUB) ? (~i_sr2_val + 1) : {1'b0, i_sr2_val};
 end
 
 // Main ALU
 always @(*) begin
     case(alu_op)
-        ALUOP_ADD: { carry_value, alu_result } = i_sr1_val + i_sr1_val;
-        ALUOP_SUB: { carry_value, alu_result } = i_sr1_val - i_sr2_val;
+        ALUOP_ADD, ALUOP_SUB: {carry_value, alu_result} = i_sr1_val + opt_b_2complement;
         ALUOP_AND: begin alu_result = i_sr1_val & i_sr2_val; carry_value = 0; end
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
         ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end

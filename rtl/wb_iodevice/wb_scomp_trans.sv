@@ -52,7 +52,7 @@ module wb_scomp_trans(
         counter = 0;
     end
 
-    assign o_wb_stall = current_state != IDLE || counter != 0 || o_sc_clk;
+    assign o_wb_stall = current_state != SC_IO_ACK; // current_state != IDLE || counter != 0 || o_sc_clk;
     assign o_wb_ack = current_state == SC_IO_ACK;
 
     always @(posedge i_clk) begin
@@ -67,11 +67,6 @@ module wb_scomp_trans(
             counter <= 0;
         end
         else begin
-            if (counter == 0) begin
-                o_sc_clk <= !o_sc_clk;
-            end
-
-
             if (current_state == IDLE && !o_sc_clk && counter == 0 && i_wb_stb) begin
                 current_state <= SC_IO_IN_PROGRESS;
 
@@ -100,8 +95,8 @@ module wb_scomp_trans(
             else if (current_state == SC_IO_END_WAIT && counter == 0) begin
                 current_state <= IDLE;
             end
-
             if (counter == 0) begin
+                o_sc_clk <= !o_sc_clk;
                 counter <= NUM_WAITS;
             end
             else
@@ -112,6 +107,7 @@ module wb_scomp_trans(
 `ifdef FORMAL
 reg f_past_valid;
 initial f_past_valid = 0;
+initial assume(current_state == IDLE);
 
 always @(posedge i_clk)
     f_past_valid <= 1;
@@ -124,7 +120,7 @@ always @(*)
 wire [3:0] f_wb_nreqs, f_wb_nacks, f_wb_outstanding;
 
 fwb_slave  #(.DW(32), .AW(30),
-        .F_MAX_STALL(10),
+        .F_MAX_STALL(30),
         .F_MAX_ACK_DELAY(10),
         .F_OPT_RMW_BUS_OPTION(1),
         .F_OPT_DISCONTINUOUS(1),

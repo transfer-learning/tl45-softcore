@@ -235,7 +235,7 @@ set_location_assignment PIN_AD25 -to sdc_o_sck
 set_location_assignment PIN_H25 -to out_wb_stall
 set_location_assignment PIN_H26 -to out_fetch_cache_hit
 set_location_assignment PIN_V1 -to i_sw16
-set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT FAST
+set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_location_assignment PIN_AC23 -to sdc_o_cs

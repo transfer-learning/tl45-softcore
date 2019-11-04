@@ -5,12 +5,12 @@ mode prove
 smtbmc yices
 
 [script]
-read -formal wb_sevenseg.sv
+read -formal wb_scomp_trans.sv
 read -formal fwb_slave.v
-prep -top wb_sevenseg
+prep -top wb_scomp_trans
 
 [files]
-../rtl/wb_iodevice/wb_sevenseg.sv
+../rtl/wb_iodevice/wb_scomp_trans.sv
 ../rtl/wishbone_formal/fwb_slave.v
 
 

@@ -135,7 +135,7 @@ end
 // Combinational Logic for calculating opt_b_2comp
 // 2 complement is computed if op==subtract
 always @(*) begin
-    opt_b_2complement = (alu_op == ALUOP_SUB) ? (~i_sr2_val + 1) : {1'b0, i_sr2_val};
+    opt_b_2complement = (alu_op == ALUOP_SUB) ? (~{1'b0, i_sr2_val} + 1) : {1'b0, i_sr2_val};
 end
 
 // Main ALU

@@ -158,7 +158,7 @@ with serial.Serial(serial_ifs[0], 115200, timeout=0.5) as ser:
     #     0x65F00034,
     # ]
 
-    if (args.dump != None):
+    if args.dump:
         write = open('dump.out', 'wb')
         for i in range(0, args.dump, 4):
             val = read_ack(ser, i)
@@ -166,14 +166,15 @@ with serial.Serial(serial_ifs[0], 115200, timeout=0.5) as ser:
                 write.write(struct.pack('B', (val >> (j*8) & 0xFF)))
         write.flush()
         exit(0)
-    if (args.file != None):
+
+    if args.file:
         print('Dump file: ', args.file)
         dump_file(ser, args.file)
         exit(0)
     print(args)
     exit(0)
 
-    #dump_file(ser, '/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out')
+    # dump_file(ser, '/Users/will/Work/transfer-learning/llvm-tl45/llvm/bbb/a.out')
 
     print('\n')
     #

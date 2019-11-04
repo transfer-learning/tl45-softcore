@@ -530,14 +530,14 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall;
+wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, wb_scomp_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, wb_scomp_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack;
+wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, wb_scomp_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, wb_scomp_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -557,6 +557,7 @@ reg v_hook_stall;
 //         1 0000 0000 0000 0000 0000 01 - SW/LEDS
 //         1 0000 0000 0000 0000 0000 1x - LCD
 //         1 0000 0000 0000 0000 0010 xx - SD Card
+//         1 0000 0000 0000 01xx xxxx xx - SCOMP
 //         1 0011 1111 11xx xxxx xxxx xx - Verilator
 
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
@@ -565,7 +566,9 @@ assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
-assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b0100000000000000000010);
+assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b100000000000001);
+
+assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b0100000000000001);
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)
@@ -574,6 +577,7 @@ assign	none_sel = (!smpl_sel)
     &&(!sw_led_sel)
     && (!sdc_sel)
     &&(!lcd_sel)
+    && (!wb_scomp_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
@@ -590,6 +594,7 @@ always @(posedge i_clk)
         || sw_led_ack
         || sdc_ack
         || lcd_ack
+        || wb_scomp_ack
 `ifdef VERILATOR
         || v_hook_ack
 `endif
@@ -613,6 +618,8 @@ always @(posedge i_clk)
         master_i_wb_data <= sdc_data;
     else if (lcd_ack)
         master_i_wb_data <= lcd_data;
+    else if (wb_scomp_ack)
+        master_i_wb_data <= wb_scomp_data;
     else
         master_i_wb_data <= 32'h0;
 
@@ -622,7 +629,8 @@ assign	master_i_wb_stall =
         || (sseg_sel) && (sseg_stall)
         || (sdc_sel) && (sdc_stall)
         || (lcd_sel && lcd_stall)
-        || (sw_led_sel) && sw_led_stall;
+        || (sw_led_sel) && sw_led_stall
+        || (wb_scomp_sel && wb_scomp_stall);
 
 // Simple Device
 reg	[31:0]	smpl_register, power_counter;
@@ -699,6 +707,32 @@ always @(posedge i_clk)
         .o_int(sdc_int),
         .i_bus_grant(1'b1),
         .o_debug(sdc_debug)
+    );
+
+    // Wishbone Transceiver
+
+    wire o_sc_iocyc, o_sc_iowr, o_sc_clk;
+    wire [7:0] o_sc_ioaddr;
+    wire [15:0] io_sc_iodata;
+
+    wb_scomp_trans scomp(
+        .i_clk(i_clk),
+        .i_reset(i_reset),
+        .i_wb_cyc(master_o_wb_cyc),
+        .i_wb_stb(master_o_wb_stb && wb_scomp_sel),
+        .i_wb_we(master_o_wb_we),
+        .i_wb_addr(master_o_wb_addr),
+        .i_wb_data(master_o_wb_data),
+        .i_wb_sel(master_o_wb_sel),
+        .o_wb_stall(wb_scomp_stall),
+        .o_wb_ack(wb_scomp_ack),
+        .o_wb_data(wb_scomp_data),
+
+        .o_sc_clk(o_sc_clk),
+        .o_sc_iocyc(o_sc_iocyc),
+        .o_sc_iowr(o_sc_iowr),
+        .o_sc_ioaddr(o_sc_ioaddr),
+        .io_sc_iodata(io_sc_iodata)
     );
 
 

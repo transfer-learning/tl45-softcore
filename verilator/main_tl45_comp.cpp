@@ -70,7 +70,11 @@ int main(int argc, char **argv) {
   printf("Initialized memory with %zu words\n", mem_ptr);
   fclose(f);
 
+#define DO_TRACE 1
+
+#if DO_TRACE
   tb->opentrace("trace.vcd");
+#endif
 
   CData unused;
 
@@ -87,11 +91,12 @@ int main(int argc, char **argv) {
 
   SerialDevice s(bus);
 
-  while (!tb->done()  && tb->m_tickcount < 100 * 2000) {
+  while (!tb->done()  && (!(DO_TRACE) || tb->m_tickcount < 100 * 20)) {
     tb->tick();
 
     s.eval();
 
+#if DO_TRACE
     if (tb->m_tickcount % 100000 == 0) {
       std::cout << "SP: " << std::hex << tb->m_core->tl45_comp__DOT__dprf__DOT__registers[14] << "\n";
       std::cout << "PC: " << std::hex << tb->m_core->tl45_comp__DOT__decode__DOT__i_buf_pc << "\n";
@@ -100,6 +105,12 @@ int main(int argc, char **argv) {
         exit(5);
       }
     }
+#else
+  if (tb->m_tickcount % 100000 == 0) {
+    printf("PC: 0x%08x\r", tb->m_core->tl45_comp__DOT__fetch__DOT__current_pc);
+    fflush(stdout);
+  }
+#endif
 
 //    printf("%d\n", tb->m_core->tl45_comp__DOT__master_i_wb_data);
   }

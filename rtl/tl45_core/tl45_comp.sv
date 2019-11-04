@@ -576,7 +576,7 @@ assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
-assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b100000000000001);
+assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b0100000000000000000010);
 
 assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b0100000000000001);
 

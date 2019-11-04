@@ -66,8 +66,18 @@ module tl45_comp(
 	 sdm_cs,
 	 sdm_sck,
 	 sdm_mosi,
-	 sdm_miso
+	 sdm_miso,
+
+     bot_sonar_init,
+     bot_sonar_echo,
+     bot_sonar_sel,
+     bot_sonar_blank
 );
+
+    output wire bot_sonar_init;
+    input wire bot_sonar_echo;
+    output wire [2:0] bot_sonar_sel;
+    output wire bot_sonar_blank;
 
     input i_sw16;
     output wire out_wb_stb,out_wb_err,out_wb_ack,out_wb_cyc, out_wb_stall, out_fetch_cache_hit;
@@ -734,6 +744,46 @@ always @(posedge i_clk)
         .o_sc_ioaddr(o_sc_ioaddr),
         .io_sc_iodata(io_sc_iodata)
     );
+
+// SCOMP IODEVICES
+// 294 CLK DIV
+localparam SONAR_DIV_FACTOR = 294;
+integer sonar_clk_div;
+wire sonar_clk;
+initial begin
+    sonar_clk_div = 0;
+end
+
+assign sonar_clk = sonar_clk_div <= (SONAR_DIV_FACTOR / 2);
+
+always @(posedge i_clk) begin
+    if (reset) begin
+        sonar_clk_div <= 0;
+    end
+    else if (sonar_clk_div == SONAR_DIV_FACTOR) begin
+        sonar_clk_div <= 0;
+    end else
+        sonar_clk_div <= sonar_clk_div + 1;
+end
+
+//    output wire bot_sonar_init;
+    // input wire bot_sonar_echo;
+    // output wire [2:0] bot_sonar_sel;
+    // output wire bot_sonar_blank;
+wire sonar_int;
+SONAR fuck_sonar(
+    sonar_clk,
+    !reset,
+    (o_sc_ioaddr >= 8'hA8 && o_sc_ioaddr <= 8'hB2),
+    o_sc_iowr,
+    bot_sonar_echo,
+    o_sc_ioaddr[4:0],
+    bot_sonar_init,
+    bot_sonar_blank,
+    bot_sonar_sel,
+    sonar_int,
+    io_sc_iodata
+);
 
 
 // SevenSeg

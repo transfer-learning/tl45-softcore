@@ -109,4 +109,32 @@ module wb_scomp_trans(
         end
     end
 
+`ifdef FORMAL
+reg f_past_valid;
+initial f_past_valid = 0;
+
+always @(posedge i_clk)
+    f_past_valid <= 1;
+
+// Let's keep it reset untill past is valid
+always @(*)
+    if (!f_past_valid)
+        assume(i_reset);
+
+wire [3:0] f_wb_nreqs, f_wb_nacks, f_wb_outstanding;
+
+fwb_slave  #(.DW(32), .AW(30),
+        .F_MAX_STALL(10),
+        .F_MAX_ACK_DELAY(10),
+        .F_OPT_RMW_BUS_OPTION(1),
+        .F_OPT_DISCONTINUOUS(1),
+        .F_OPT_MINCLOCK_DELAY(1'b0))
+    f_wba(i_clk, i_reset,
+        i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel, 
+        o_wb_ack, o_wb_stall, o_wb_data, 0,
+        f_wb_nreqs, f_wb_nacks, f_wb_outstanding);
+
+`endif
+
+
 endmodule

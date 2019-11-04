@@ -11,7 +11,7 @@ initial begin
     o_stb_de2 = 0;
 end
 
-parameter counts_per_strobe = 10_000_0000;
+parameter counts_per_strobe = 5_000_0000;
 
 reg [32:0] counter;
 initial counter = 0;

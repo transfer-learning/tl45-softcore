@@ -63,16 +63,20 @@ module tl45_comp(
     sdc_o_mosi,
     sdc_i_miso,
 	 
-	 sdm_cs,
-	 sdm_sck,
-	 sdm_mosi,
-	 sdm_miso,
+    sdm_cs,
+    sdm_sck,
+    sdm_mosi,
+    sdm_miso,
 
-     bot_sonar_init,
-     bot_sonar_echo,
-     bot_sonar_sel,
-     bot_sonar_blank
+    bot_sonar_init,
+    bot_sonar_echo,
+    bot_sonar_sel,
+    bot_sonar_blank,
+
+    gleds
 );
+
+    output wire [7:0] gleds;
 
     output wire bot_sonar_init;
     input wire bot_sonar_echo;
@@ -570,15 +574,29 @@ reg v_hook_stall;
 //         1 0000 0000 0000 01xx xxxx xx - SCOMP
 //         1 0011 1111 11xx xxxx xxxx xx - Verilator
 
+
+// Yaotian's Memory Map
+// ------- BUS ADDRESS SAPCE ----------- --SEL
+//
+// 00 0000 0000 0000 0000 0000 0000 0000 00
+// 00 0000 000x xxxx xxxx xxxx xxxx xxxx xx - DRAM 8 MB (0x0000_0000 -> 0x007f_ffff)
+// 00 0000 001x xxxx xxxx xxxx xxxx xxxx xx - Simple Device 8 MB (0x0080_0000 -> 0x00ff_ffff)
+// 00 0000 0100 0000 0000 0000 0000 0000 xx - SSEG   (4 Bytes) (0x0100_0000 -> 0x0100_0003)
+// 00 0000 0100 0000 0000 0000 0000 0001 xx - SW/LED (4 Bytes) (0x0100_0004 -> 0x0100_0007)
+// 00 0000 0100 0000 0000 0000 0000 001x xx - LCD    (8 Bytes) (0x0100_0008 -> 0x0100_000f)
+// 00 0000 0100 0000 0000 0000 0000 01xx xx - SD    (16Bytes) (0x0100_0010 -> 0x0100_001f)
+// 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP    (16Bytes) (0x0100_0400 -> 0x0100_07ff)
+//(31)
+
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
 assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
-assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b0100000000000000000010);
+assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b01_0000_0000_0000_0000_0010);
 
-assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b0100000000000001);
+assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b00_0000_0100_0000_0000_0001);
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)
@@ -727,7 +745,7 @@ always @(posedge i_clk)
 
     wb_scomp_trans scomp(
         .i_clk(i_clk),
-        .i_reset(i_reset),
+        .i_reset(reset),
         .i_wb_cyc(master_o_wb_cyc),
         .i_wb_stb(master_o_wb_stb && wb_scomp_sel),
         .i_wb_we(master_o_wb_we),
@@ -744,6 +762,8 @@ always @(posedge i_clk)
         .o_sc_ioaddr(o_sc_ioaddr),
         .io_sc_iodata(io_sc_iodata)
     );
+
+green_leds scomp_leds(o_sc_clk, o_sc_ioaddr, io_sc_iodata, o_sc_iocyc, o_sc_iowr, gleds);
 
 // SCOMP IODEVICES
 // 294 CLK DIV

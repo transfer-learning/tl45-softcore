@@ -1,5 +1,6 @@
 [options]
-mode prove
+mode bmc
+depth 50
 
 [engines]
 smtbmc yices

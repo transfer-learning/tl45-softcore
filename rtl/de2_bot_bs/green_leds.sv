@@ -1,6 +1,6 @@
 module green_leds(iclk, iaddr, idata, icyc, iwr, leds);
 
-parameter [15:0] IO_ADDR = 0;
+parameter [7:0] IO_ADDR = 6;
 input wire [7:0] iaddr;
 input wire [15:0] idata;
 input wire icyc, iwr, iclk;

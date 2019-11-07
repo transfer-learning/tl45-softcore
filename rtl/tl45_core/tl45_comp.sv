@@ -70,9 +70,18 @@ module tl45_comp(
 
     gleds,
     i_lenc_a, i_lenc_b,
-    i_renc_a, i_renc_b
+    i_renc_a, i_renc_b,
+    o_lmot_phase, o_lmot_en,
+    o_rmot_phase, o_rmot_en,
+    i_asleep, o_awake,
+    o_watchdog,
 );
 
+    output wire o_lmot_phase, o_lmot_en,
+                o_rmot_phase, o_rmot_en,
+                o_watchdog, o_awake;
+    input wire i_asleep;
+    assign o_awake = !i_asleep;
     input wire i_lenc_a, i_lenc_b, i_renc_a, i_renc_b;
 
     output wire [7:0] gleds;
@@ -800,12 +809,55 @@ always @(posedge i_clk)
 green_leds scomp_leds(o_sc_clk, o_sc_ioaddr, io_sc_iodata, o_sc_iocyc, o_sc_iowr, gleds);
 
 wire clk_64hz;
-clk_divider #(.OCLK_FREQ(64)) sixty_four_hz_gen(i_clk, reset, clk_64hz);
+clk_divider #(.OCLK_FREQ(32)) sixty_four_hz_gen(i_clk, reset, clk_64hz);
 
+wire clk_100mhz, locked_100mhz;
+main_pll master_pll(i_clk, clk_100mhz, locked_100mhz);
+
+wire l_int_warn;
+wire l_watchdog;
+wire [15:0] l_yeet;
+VEL_CONTROL left(
+    clk_100mhz,
+    !reset,
+    (o_sc_iocyc && o_sc_ioaddr == 8'h83),
+    o_sc_iowr,
+    io_sc_iodata,
+    lenc_value,
+    clk_64hz,
+    !i_asleep,
+    1,
+    o_lmot_phase,
+    o_lmot_en,
+    l_int_warn,
+    l_watchdog,
+    l_yeet
+);
+
+wire r_int_warn;
+wire r_watchdog;
+wire [15:0] r_yeet;
+VEL_CONTROL right(
+    clk_100mhz,
+    !reset,
+    (o_sc_iocyc && o_sc_ioaddr == 8'h8B),
+    o_sc_iowr,
+    io_sc_iodata,
+    renc_value,
+    clk_64hz,
+    !i_asleep,
+    1,
+    o_rmot_phase,
+    o_rmot_en,
+    r_int_warn,
+    r_watchdog,
+    r_yeet
+);
+assign o_watchdog = (r_watchdog || l_watchdog);
 // SCOMP IODEVICES
 // 294 CLK DIV
 localparam SONAR_DIV_FACTOR = 294;
-integer sonar_clk_div;
+reg [15:0] sonar_clk_div;
 wire sonar_clk;
 initial begin
     sonar_clk_div = 0;
@@ -831,7 +883,7 @@ wire sonar_int;
 SONAR fuck_sonar(
     sonar_clk,
     !reset,
-    (o_sc_ioaddr >= 8'hA8 && o_sc_ioaddr <= 8'hB2),
+    (o_sc_ioaddr >= 8'hA0 && o_sc_ioaddr <= 8'hB7 && o_sc_iocyc),
     o_sc_iowr,
     bot_sonar_echo,
     o_sc_ioaddr[4:0],

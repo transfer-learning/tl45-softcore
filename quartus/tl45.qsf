@@ -245,6 +245,15 @@ set_location_assignment PIN_W25 -to bot_sonar_init
 set_location_assignment PIN_V23 -to bot_sonar_sel[2]
 set_location_assignment PIN_V25 -to bot_sonar_sel[1]
 set_location_assignment PIN_W23 -to bot_sonar_sel[0]
+set_location_assignment PIN_Y18 -to gleds[7]
+set_location_assignment PIN_AA20 -to gleds[6]
+set_location_assignment PIN_U17 -to gleds[5]
+set_location_assignment PIN_U18 -to gleds[4]
+set_location_assignment PIN_V18 -to gleds[3]
+set_location_assignment PIN_W19 -to gleds[2]
+set_location_assignment PIN_AF22 -to gleds[1]
+set_location_assignment PIN_AE22 -to gleds[0]
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wb_iodevice/wb_quad_encoder.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/de2_bot_bs/green_leds.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wb_iodevice/wb_scomp_trans.sv
 set_global_assignment -name VHDL_FILE ../rtl/de2_bot_bs/SONAR.vhd
@@ -284,12 +293,8 @@ set_global_assignment -name VERILOG_FILE ../rtl/bus/memdev.v
 set_global_assignment -name CDF_FILE tl45.cdf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name SDC_FILE tl45.sdc
-set_location_assignment PIN_Y18 -to gleds[7]
-set_location_assignment PIN_AA20 -to gleds[6]
-set_location_assignment PIN_U17 -to gleds[5]
-set_location_assignment PIN_U18 -to gleds[4]
-set_location_assignment PIN_V18 -to gleds[3]
-set_location_assignment PIN_W19 -to gleds[2]
-set_location_assignment PIN_AF22 -to gleds[1]
-set_location_assignment PIN_AE22 -to gleds[0]
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_location_assignment PIN_M24 -to i_lenc_a
+set_location_assignment PIN_N24 -to i_lenc_b
+set_location_assignment PIN_R25 -to i_renc_a
+set_location_assignment PIN_R20 -to i_renc_b

@@ -62,11 +62,6 @@ module tl45_comp(
     sdc_o_sck,
     sdc_o_mosi,
     sdc_i_miso,
-	 
-    sdm_cs,
-    sdm_sck,
-    sdm_mosi,
-    sdm_miso,
 
     bot_sonar_init,
     bot_sonar_echo,
@@ -126,17 +121,10 @@ module tl45_comp(
 
     // SD Card SPI
     output	wire sdc_o_sck, sdc_o_mosi;
-	 input	wire sdc_i_miso;
-	 output wire sdc_o_cs;
-	 wire sdc_o_cs_n;
-	 assign sdc_o_cs = sdc_o_cs_n;
-
-	 output wire sdm_cs, sdm_sck, sdm_mosi, sdm_miso;
-	 assign sdm_cs = sdc_o_cs;
-	 assign sdm_sck = sdc_o_sck;
-	 assign sdm_mosi = sdc_o_mosi;
-	 assign sdm_miso = sdc_i_miso;
-	 
+    input	wire sdc_i_miso;
+    output wire sdc_o_cs;
+    wire sdc_o_cs_n;
+    assign sdc_o_cs = sdc_o_cs_n;
 	 
 	 // RESET
 	 wire reset;
@@ -810,6 +798,9 @@ always @(posedge i_clk)
     );
 
 green_leds scomp_leds(o_sc_clk, o_sc_ioaddr, io_sc_iodata, o_sc_iocyc, o_sc_iowr, gleds);
+
+wire clk_64hz;
+clk_divider #(.OCLK_FREQ(64)) sixty_four_hz_gen(i_clk, reset, clk_64hz);
 
 // SCOMP IODEVICES
 // 294 CLK DIV

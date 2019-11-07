@@ -31,9 +31,12 @@ wire count_direction = quadA_delayed[1] ^ quadB_delayed[2];
 
 always @(posedge i_clk)
 begin
-    if (i_reset || (i_wb_stb && i_wb_we && i_wb_cyc)) // Reset Counter on System reset or write
-        count <= 0;
-    else if(count_enable)
+    if (i_reset || (i_wb_stb && i_wb_we && i_wb_cyc)) begin // Reset Counter on System reset or write
+        if (i_reset)
+            count <= 0;
+        else
+            count <= i_wb_data;
+    end else if(count_enable)
         if(count_direction) count<=count+1; else count<=count-1;
 end
 

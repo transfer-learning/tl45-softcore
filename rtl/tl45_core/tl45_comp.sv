@@ -73,8 +73,12 @@ module tl45_comp(
     bot_sonar_sel,
     bot_sonar_blank,
 
-    gleds
+    gleds,
+    i_lenc_a, i_lenc_b,
+    i_renc_a, i_renc_b
 );
+
+    input wire i_lenc_a, i_lenc_b, i_renc_a, i_renc_b;
 
     output wire [7:0] gleds;
 
@@ -544,14 +548,14 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, wb_scomp_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, wb_scomp_stall;
+wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, wb_scomp_data, lenc_data, renc_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, wb_scomp_stall, lenc_stall, renc_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, wb_scomp_ack;
+wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, wb_scomp_ack, lenc_ack, renc_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, wb_scomp_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, wb_scomp_sel, lenc_sel, renc_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -584,7 +588,9 @@ reg v_hook_stall;
 // 00 0000 0100 0000 0000 0000 0000 0000 xx - SSEG   (4 Bytes) (0x0100_0000 -> 0x0100_0003)
 // 00 0000 0100 0000 0000 0000 0000 0001 xx - SW/LED (4 Bytes) (0x0100_0004 -> 0x0100_0007)
 // 00 0000 0100 0000 0000 0000 0000 001x xx - LCD    (8 Bytes) (0x0100_0008 -> 0x0100_000f)
-// 00 0000 0100 0000 0000 0000 0000 01xx xx - SD    (16Bytes) (0x0100_0010 -> 0x0100_001f)
+// 00 0000 0100 0000 0000 0000 0000 01xx xx - SD     (16Bytes) (0x0100_0010 -> 0x0100_001f)
+// 00 0000 0100 0000 0000 0000 0000 1000 xx - ENC(L) (4 Bytes) (0x0100_0020 -> 0x0100_0023)
+// 00 0000 0100 0000 0000 0000 0000 1001 xx - ENC(R) (4 Bytes) (0x0100_0024 -> 0x0100_0027)
 // 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP    (16Bytes) (0x0100_0400 -> 0x0100_07ff)
 //(31)
 
@@ -595,6 +601,9 @@ assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
 assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b01_0000_0000_0000_0000_0010);
+// L/R Encoders
+assign lenc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1000);
+assign renc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1001);
 
 assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b00_0000_0100_0000_0000_0001);
 
@@ -606,6 +615,8 @@ assign	none_sel = (!smpl_sel)
     && (!sdc_sel)
     &&(!lcd_sel)
     && (!wb_scomp_sel)
+    && (!lenc_sel)
+    && (!renc_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
@@ -622,6 +633,8 @@ always @(posedge i_clk)
         || sw_led_ack
         || sdc_ack
         || lcd_ack
+        || lenc_ack
+        || renc_ack
         || wb_scomp_ack
 `ifdef VERILATOR
         || v_hook_ack
@@ -646,6 +659,10 @@ always @(posedge i_clk)
         master_i_wb_data <= sdc_data;
     else if (lcd_ack)
         master_i_wb_data <= lcd_data;
+    else if (lenc_ack)
+        master_i_wb_data <= lenc_data;
+    else if (renc_ack)
+        master_i_wb_data <= renc_data;
     else if (wb_scomp_ack)
         master_i_wb_data <= wb_scomp_data;
     else
@@ -655,10 +672,12 @@ assign	master_i_wb_stall =
            ((smpl_sel) && (smpl_stall))
         || ((mem_sel)  && (mem_stall))
         || (sseg_sel) && (sseg_stall)
-        || (sdc_sel) && (sdc_stall)
-        || (lcd_sel && lcd_stall)
-        || (sw_led_sel) && sw_led_stall
-        || (wb_scomp_sel && wb_scomp_stall);
+        || sdc_sel && sdc_stall
+        || lcd_sel && lcd_stall
+        || sw_led_sel && sw_led_stall
+        || lenc_sel && lenc_stall
+        || renc_sel && renc_stall
+        || wb_scomp_sel && wb_scomp_stall;
 
 // Simple Device
 reg	[31:0]	smpl_register, power_counter;
@@ -703,6 +722,33 @@ always @(posedge i_clk)
         bus_err_address <= master_o_wb_addr; // possibly wrong
 
 // IO Devices
+
+
+// L/R Encoder Device
+    wire [31:0] lenc_value;
+    wb_quad_encoder left_encoder(
+    i_clk, reset, 
+    master_o_wb_cyc, 
+    (master_o_wb_stb && lenc_sel),
+    master_o_wb_we, 
+    master_o_wb_addr, master_o_wb_data,
+    master_o_wb_sel,
+    lenc_ack, lenc_stall, 
+    lenc_data,
+    i_lenc_a, i_lenc_b, lenc_value);
+
+    wire [31:0] renc_value;
+    wb_quad_encoder right_encoder(
+    i_clk, reset, 
+    master_o_wb_cyc, 
+    (master_o_wb_stb && renc_sel),
+    master_o_wb_we, 
+    master_o_wb_addr, master_o_wb_data,
+    master_o_wb_sel,
+    renc_ack, renc_stall, 
+    renc_data,
+    i_renc_a, i_renc_b, renc_value);
+
 
     wire sdc_int;
     wire [31:0] sdc_debug;

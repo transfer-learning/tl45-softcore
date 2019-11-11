@@ -293,8 +293,8 @@ module tl45_comp(
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
         .i_reset(reset || i_halt_proc),
-        .i_pipe_stall(stall_fetch_decode || inst_decode_err),
-        .i_pipe_flush(flush_fetch_decode || i_halt_proc),
+        .i_pipe_stall(stall_fetch_decode),
+        .i_pipe_flush(flush_fetch_decode || i_halt_proc || inst_decode_err),
         .i_new_pc(alu_buf_ld_newpc || mem_buf_ld_newpc),
         .i_pc(alu_buf_ld_newpc ? alu_buf_br_pc : mem_buf_br_pc),
 

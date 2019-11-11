@@ -856,29 +856,9 @@ VEL_CONTROL right(
 assign o_watchdog = (r_watchdog || l_watchdog);
 // SCOMP IODEVICES
 // 294 CLK DIV
-localparam SONAR_DIV_FACTOR = 294;
-reg [15:0] sonar_clk_div;
 wire sonar_clk;
-initial begin
-    sonar_clk_div = 0;
-end
+clk_divider #(.OCLK_FREQ(85_000)) one_seventyK_clk(i_clk, reset, sonar_clk);
 
-assign sonar_clk = sonar_clk_div <= (SONAR_DIV_FACTOR / 2);
-
-always @(posedge i_clk) begin
-    if (reset) begin
-        sonar_clk_div <= 0;
-    end
-    else if (sonar_clk_div == SONAR_DIV_FACTOR) begin
-        sonar_clk_div <= 0;
-    end else
-        sonar_clk_div <= sonar_clk_div + 1;
-end
-
-//    output wire bot_sonar_init;
-    // input wire bot_sonar_echo;
-    // output wire [2:0] bot_sonar_sel;
-    // output wire bot_sonar_blank;
 wire sonar_int;
 SONAR fuck_sonar(
     sonar_clk,

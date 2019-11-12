@@ -205,8 +205,8 @@ end
 assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
-`define MUL_WAIT_TARGET 2'h1
-reg [0:0] mul_wait;
+`define MUL_WAIT_TARGET 2'h3
+reg [1:0] mul_wait;
 initial mul_wait = 0;
 
 always @(*) begin

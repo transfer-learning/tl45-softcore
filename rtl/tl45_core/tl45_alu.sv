@@ -38,8 +38,8 @@ input wire [31:0] i_sr1_val, i_sr2_val,
 input wire [3:0] i_jmp_cond;
 
 // Operand Forward
-output wire [3:0] o_of_reg;
-output wire [31:0] o_of_val;
+output reg [3:0] o_of_reg;
+output reg [31:0] o_of_val;
 
 // Output to Next Stage
 output reg [31:0] o_value;
@@ -205,12 +205,13 @@ end
 assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
-reg mul_wait;
+`define MUL_WAIT_TARGET 2'h1
+reg [0:0] mul_wait;
 initial mul_wait = 0;
 
 always @(*) begin
     if (alu_op == ALUOP_MUL)
-        stall_previous_stage = ~mul_wait;
+        stall_previous_stage = (mul_wait != `MUL_WAIT_TARGET);
     else
         stall_previous_stage = 0;
 end
@@ -232,7 +233,7 @@ always @(posedge i_clk) begin
     else begin
         // ALU Logic
         if (alu_op == ALUOP_MUL) begin // MUL waits extra cycle
-            if (mul_wait) begin
+            if (mul_wait == `MUL_WAIT_TARGET) begin
                 o_value <= alu_result;
                 o_dr <= i_dr;
             end else begin
@@ -249,8 +250,23 @@ always @(posedge i_clk) begin
     end 
 end
 
-assign o_of_reg = alu_op == ALUOP_NOP ? 0 : i_dr;
-assign o_of_val = alu_op == ALUOP_NOP ? 0 : alu_result;
+always @(*) begin
+    if (alu_op == ALUOP_NOP) begin
+        o_of_val = 0;
+        o_of_reg = 0;
+    end else if (alu_op == ALUOP_MUL) begin
+        if (mul_wait == `MUL_WAIT_TARGET) begin
+            o_of_val = alu_result;
+            o_of_reg = i_dr;
+        end else begin
+            o_of_val = 0;
+            o_of_reg = 0;
+        end
+    end else begin
+        o_of_reg = i_dr;
+        o_of_val = alu_result;
+    end
+end
 
 `ifdef FORMAL
 

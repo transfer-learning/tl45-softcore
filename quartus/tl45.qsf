@@ -176,8 +176,8 @@ set_location_assignment PIN_P18 -to opcode_breakout[3]
 set_location_assignment PIN_G23 -to opcode_breakout[4]
 set_location_assignment PIN_G24 -to o_halt
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
-set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC OFF
-set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING OFF
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
 set_location_assignment PIN_AE23 -to o_leds[0]
 set_location_assignment PIN_AE13 -to o_leds[15]
 set_location_assignment PIN_AF13 -to o_leds[14]
@@ -235,7 +235,7 @@ set_location_assignment PIN_AD25 -to sdc_o_sck
 set_location_assignment PIN_H25 -to out_wb_stall
 set_location_assignment PIN_H26 -to out_fetch_cache_hit
 set_location_assignment PIN_V1 -to i_sw16
-set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
+set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_location_assignment PIN_AC23 -to sdc_o_cs
@@ -257,6 +257,14 @@ set_location_assignment PIN_M24 -to i_lenc_a
 set_location_assignment PIN_N24 -to i_lenc_b
 set_location_assignment PIN_R25 -to i_renc_a
 set_location_assignment PIN_R20 -to i_renc_b
+set_location_assignment PIN_M19 -to i_asleep
+set_location_assignment PIN_K26 -to o_lmot_en
+set_location_assignment PIN_K25 -to o_lmot_phase
+set_location_assignment PIN_M20 -to o_rmot_en
+set_location_assignment PIN_M23 -to o_rmot_phase
+set_location_assignment PIN_M22 -to o_watchdog
+set_location_assignment PIN_AE12 -to o_awake
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/tl45_core/tl45_look_ahead_adder.sv
 set_global_assignment -name VHDL_FILE ../rtl/de2_bot_bs/VEL_CONTROL.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/clk_divider.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wb_iodevice/wb_quad_encoder.sv
@@ -300,11 +308,5 @@ set_global_assignment -name CDF_FILE tl45.cdf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name SDC_FILE tl45.sdc
 set_global_assignment -name QIP_FILE ../rtl/plls/main_pll.qip
-set_location_assignment PIN_M19 -to i_asleep
-set_location_assignment PIN_K26 -to o_lmot_en
-set_location_assignment PIN_K25 -to o_lmot_phase
-set_location_assignment PIN_M20 -to o_rmot_en
-set_location_assignment PIN_M23 -to o_rmot_phase
-set_location_assignment PIN_M22 -to o_watchdog
-set_location_assignment PIN_AE12 -to o_awake
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING OFF
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

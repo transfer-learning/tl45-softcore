@@ -176,8 +176,8 @@ set_location_assignment PIN_P18 -to opcode_breakout[3]
 set_location_assignment PIN_G23 -to opcode_breakout[4]
 set_location_assignment PIN_G24 -to o_halt
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
-set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
-set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC OFF
+set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING OFF
 set_location_assignment PIN_AE23 -to o_leds[0]
 set_location_assignment PIN_AE13 -to o_leds[15]
 set_location_assignment PIN_AF13 -to o_leds[14]
@@ -210,7 +210,7 @@ set_location_assignment PIN_AE14 -to i_switches[3]
 set_location_assignment PIN_P25 -to i_switches[2]
 set_location_assignment PIN_N26 -to i_switches[1]
 set_location_assignment PIN_N25 -to i_switches[0]
-set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION ON
 set_location_assignment PIN_H3 -to io_disp_data[7]
 set_location_assignment PIN_H4 -to io_disp_data[6]
 set_location_assignment PIN_J3 -to io_disp_data[5]
@@ -235,7 +235,7 @@ set_location_assignment PIN_AD25 -to sdc_o_sck
 set_location_assignment PIN_H25 -to out_wb_stall
 set_location_assignment PIN_H26 -to out_fetch_cache_hit
 set_location_assignment PIN_V1 -to i_sw16
-set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
+set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_location_assignment PIN_AC23 -to sdc_o_cs

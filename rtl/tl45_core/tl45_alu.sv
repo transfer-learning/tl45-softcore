@@ -58,6 +58,7 @@ end
 // TL45 Opcodes
 localparam OP_ADD = 5'h1,
            OP_SUB = 5'h2,
+			  OP_MUL = 5'h3,
            OP_OR  = 5'h6,
            OP_XOR = 5'h7,
            OP_AND = 5'h8,
@@ -85,7 +86,8 @@ localparam ALUOP_NOP = 0,
            ALUOP_ADEC = 8,
            ALUOP_SHL = 9,
            ALUOP_SHR = 10,
-           ALUOP_SHRA = 11;
+           ALUOP_SHRA = 11,
+           ALUOP_MUL = 12;
 
 // select alu op
 always @(*)
@@ -101,6 +103,7 @@ always @(*)
     OP_SHL: alu_op = ALUOP_SHL;
     OP_SHR: alu_op = ALUOP_SHR;
     OP_SHRA: alu_op = ALUOP_SHRA;
+    OP_MUL: alu_op = ALUOP_MUL;
     default: alu_op = ALUOP_NOP;
     endcase
 
@@ -151,6 +154,7 @@ always @(*) begin
         ALUOP_SHL: begin alu_result = i_sr2_val[31:5] != 0 ? 0 : (i_sr1_val << i_sr2_val[4:0]); carry_value = 0; end
         ALUOP_SHR: begin alu_result = i_sr2_val[31:5] != 0 ? 0 : (i_sr1_val >> i_sr2_val[4:0]); carry_value = 0; end
         ALUOP_SHRA: begin alu_result = i_sr2_val[31:5] != 0 ? {32{i_sr1_val[31]}} :(i_sr1_val >>> i_sr2_val[4:0]); carry_value = 0; end
+        ALUOP_MUL: begin alu_result = i_sr1_val * i_sr2_val; carry_value = 0; end
         default: begin alu_result = i_sr1_val; carry_value = 0; end
     endcase
 end
@@ -201,24 +205,47 @@ end
 assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
+reg mul_wait;
+initial mul_wait = 0;
+
+always @(*) begin
+    if (alu_op == ALUOP_MUL)
+        stall_previous_stage = ~mul_wait;
+    else
+        stall_previous_stage = 0;
+end
+
 always @(posedge i_clk) begin
     if (i_reset || o_pipe_flush) begin
         if (i_reset)
             flags <= 0;
         o_dr <= 0;
         o_value <= 0;
+        mul_wait <= 0;
     end
     else if (is_branch || alu_op == ALUOP_NOP) begin
         // Branch Logic
         o_dr <= 4'h0; // Branch never writes to DR
         o_value <= 0;
+        mul_wait <= 0;
     end
     else begin
         // ALU Logic
+        if (alu_op == ALUOP_MUL) begin // MUL waits extra cycle
+            if (mul_wait) begin
+                o_value <= alu_result;
+                o_dr <= i_dr;
+            end else begin
+                o_dr <= 0;
+                o_value <= 0;
+            end
+            mul_wait <= mul_wait + 1;
+        end else begin
         if (set_flags)
             flags <= {flg_overflow, flg_zero, flg_carry, flg_sign};
         o_dr <= i_dr;
-        o_value <= alu_result;
+        o_value <= alu_result;            
+        end
     end 
 end
 

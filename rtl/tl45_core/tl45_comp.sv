@@ -1,21 +1,5 @@
 `default_nettype none
 
-//`define DO_INCLUDE
-
-`ifdef DO_INCLUDE
-
-`include "tl45_dprf.sv"
-`include "tl45_prefetch.sv"
-`include "tl45_decode.sv"
-`include "tl45_register_read.sv"
-`include "tl45_alu.sv"
-`include "tl45_writeback.sv"
-`include "tl45_memory.sv"
-//`include "memdev.v"
-`include "wbpriarbiter.v"
-//`include "hbbus.v"
-
-`endif
 `define	UARTSETUP	434	// Must match testbus_tb, =4Mb w/ a 100MHz ck
 module tl45_comp(
     i_clk, i_reset,
@@ -74,7 +58,7 @@ module tl45_comp(
     o_lmot_phase, o_lmot_en,
     o_rmot_phase, o_rmot_en,
     i_asleep, o_awake,
-    o_watchdog,
+    o_watchdog
 );
 
     output wire o_lmot_phase, o_lmot_en,
@@ -805,7 +789,7 @@ always @(posedge i_clk)
         .o_sc_ioaddr(o_sc_ioaddr),
         .io_sc_iodata(io_sc_iodata)
     );
-
+`ifndef VERILATOR
 green_leds scomp_leds(o_sc_clk, o_sc_ioaddr, io_sc_iodata, o_sc_iocyc, o_sc_iowr, gleds);
 
 wire clk_64hz;
@@ -873,7 +857,7 @@ SONAR fuck_sonar(
     sonar_int,
     io_sc_iodata
 );
-
+`endif
 
 // SevenSeg
 wb_sevenseg sevenseg_disp(

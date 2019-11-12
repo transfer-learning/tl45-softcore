@@ -1,7 +1,9 @@
+`default_nettype none
 /* (c) Krishna Subramanian <https://github.com/mongrelgem>
  * For Issues & Bugs, report to <https://github.com/mongrelgem/Verilog-Adders/issues>
 */
-
+/* verilator lint_off ASSIGNDLY */
+/* verilator lint_off DECLFILENAME */
 module BigCircle(output G, P, input Gi, Pi, GiPrev, PiPrev);
   
   wire e;
@@ -194,3 +196,5 @@ module KSA64(output [63:0] sum, output cout, input [63:0] a, b);
   buf #(1) (cout, c[63]);
 
 endmodule
+/* verilator lint_on ASSIGNDLY */
+/* verilator lint_on DECLFILENAME */

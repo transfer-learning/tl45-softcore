@@ -146,7 +146,7 @@ wire [31:0] adder_sum;
 KSA32 carry_adder(
     adder_sum, adder_carry,
     i_sr1_val, 
-    (alu_op == ALUOP_SUB) ? ~i_sr2_val : i_sr1_val,
+    (alu_op == ALUOP_SUB) ? ~i_sr2_val : i_sr2_val,
     alu_op == ALUOP_SUB
 );
 wire [31:0] mul_result;
@@ -155,8 +155,8 @@ assign mul_result = i_sr1_val * i_sr2_val;
 always @(*) begin
     case(alu_op)
         ALUOP_ADD, ALUOP_SUB: begin
-            alu_result = adder_sum;
-            carry_value = adder_carry;
+        alu_result = adder_sum;
+        carry_value = adder_carry;
         end
         ALUOP_AND: begin alu_result = i_sr1_val & i_sr2_val; carry_value = 0; end
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
@@ -248,11 +248,11 @@ always @(posedge i_clk) begin
             if (mul_wait == `MUL_WAIT_TARGET) begin
                 o_value <= mul_result;
                 o_dr <= i_dr;
-                mul_wait <= mul_wait + 1;
+                mul_wait <= 0;
             end else begin
                 o_dr <= 0;
                 o_value <= 0;
-                mul_wait <= 0;
+                mul_wait <= mul_wait + 1;
             end
         end else begin
         if (set_flags)
@@ -270,7 +270,7 @@ always @(*) begin
         o_of_reg = 0;
     end else if (alu_op == ALUOP_MUL) begin
         if (mul_wait == `MUL_WAIT_TARGET) begin
-            o_of_val = alu_result;
+            o_of_val = mul_result;
             o_of_reg = i_dr;
         end else begin
             o_of_val = 0;

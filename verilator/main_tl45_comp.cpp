@@ -36,7 +36,8 @@ int main(int argc, char **argv) {
   TESTBENCH<Vtl45_comp> *tb = new TESTBENCH<Vtl45_comp>();
 
   auto &ram = tb->m_core->tl45_comp__DOT__my_mem__DOT__mem;
-
+//#define LOAD
+#ifdef LOAD
   FILE *f;
   if (argc > 1)
     f = fopen(argv[1], "r");
@@ -69,7 +70,12 @@ int main(int argc, char **argv) {
 
   printf("Initialized memory with %zu words\n", mem_ptr);
   fclose(f);
-
+#else
+  ram[0] = 0x0d100003;
+  ram[1] = 0x0d200002;
+  ram[2] = 0x18312000;
+  ram[3] = 0x0d100009;
+#endif
 #define DO_TRACE 1
 
 #if DO_TRACE
@@ -97,7 +103,7 @@ int main(int argc, char **argv) {
     s.eval();
 
 #if DO_TRACE
-    if (tb->m_tickcount % 100000 == 0) {
+    if (tb->m_tickcount % 10 == 0) {
       std::cout << "SP: " << std::hex << tb->m_core->tl45_comp__DOT__dprf__DOT__registers[14] << "\n";
       std::cout << "PC: " << std::hex << tb->m_core->tl45_comp__DOT__decode__DOT__i_buf_pc << "\n";
 

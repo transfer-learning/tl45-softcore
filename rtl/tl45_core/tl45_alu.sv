@@ -154,10 +154,8 @@ assign mul_result = i_sr1_val * i_sr2_val;
 // Main ALU
 always @(*) begin
     case(alu_op)
-        ALUOP_ADD, ALUOP_SUB: begin
-        alu_result = adder_sum;
-        carry_value = adder_carry;
-        end
+        ALUOP_ADD: {carry_value, alu_result} = i_sr1_val + i_sr2_val;
+        ALUOP_SUB: {carry_value, alu_result} = i_sr1_val - i_sr2_val;
         ALUOP_AND: begin alu_result = i_sr1_val & i_sr2_val; carry_value = 0; end
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
         ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end

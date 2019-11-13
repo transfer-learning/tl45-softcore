@@ -141,14 +141,6 @@ always @(*) begin
     opt_b_2complement = (alu_op == ALUOP_SUB) ? (~{1'b0, i_sr2_val} + 1) : {1'b0, i_sr2_val};
 end
 
-wire adder_carry;
-wire [31:0] adder_sum;
-KSA32 carry_adder(
-    adder_sum, adder_carry,
-    i_sr1_val, 
-    (alu_op == ALUOP_SUB) ? ~i_sr2_val : i_sr2_val,
-    alu_op == ALUOP_SUB
-);
 wire [31:0] mul_result;
 assign mul_result = i_sr1_val * i_sr2_val;
 // Main ALU
@@ -215,7 +207,7 @@ end
 assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
-`define MUL_WAIT_TARGET 3'h3
+`define MUL_WAIT_TARGET 3'h5
 reg [2:0] mul_wait;
 initial mul_wait = 0;
 

@@ -101,6 +101,9 @@ module tl45_comp(
 
     // SDRAM IO
     output wire sdram_clk;
+    wire dram_clk_source;
+    dram_pll dram_clock_pll(i_clk, sdram_clk);
+
     // assign sdram_clk = i_clk;
     output wire sdr_cs_n;
     output wire sdr_cke;
@@ -572,7 +575,7 @@ reg v_hook_stall;
 // 00 0000 0100 0000 0000 0000 0000 01xx xx - SD     (16Bytes) (0x0100_0010 -> 0x0100_001f)
 // 00 0000 0100 0000 0000 0000 0000 1000 xx - ENC(L) (4 Bytes) (0x0100_0020 -> 0x0100_0023)
 // 00 0000 0100 0000 0000 0000 0000 1001 xx - ENC(R) (4 Bytes) (0x0100_0024 -> 0x0100_0027)
-// 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP    (16Bytes) (0x0100_0400 -> 0x0100_07ff)
+// 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP  (1KBytes) (0x0100_0400 -> 0x0100_07ff)
 //(31)
 
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
@@ -581,8 +584,8 @@ assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
-assign  sdc_sel = (master_o_wb_addr[29:2] == 28'b01_0000_0000_0000_0000_0010);
-// L/R Encoders
+assign  sdc_sel = (master_o_wb_addr[29:2] ==    28'b0000_0001_0000_0000_0000_0000_0010);
+// L/R Encoders 
 assign lenc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1000);
 assign renc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1001);
 
@@ -975,7 +978,7 @@ wb_switch_led de2_switch_led(
         mem_stall,
         mem_ack,
 
-        sdram_clk,
+        dram_clk_source,
         sdr_cke,
         sdr_cs_n,
         sdr_ras_n,

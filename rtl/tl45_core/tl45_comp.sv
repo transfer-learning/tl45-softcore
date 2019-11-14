@@ -532,14 +532,18 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, wb_scomp_data, lenc_data, renc_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, wb_scomp_stall, lenc_stall, renc_stall;
+wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, wb_scomp_data, lenc_data, renc_data,
+timer_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, wb_scomp_stall, lenc_stall, renc_stall,
+timer_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, wb_scomp_ack, lenc_ack, renc_ack;
+wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, wb_scomp_ack, lenc_ack, renc_ack, 
+timer_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, wb_scomp_sel, lenc_sel, renc_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, wb_scomp_sel, lenc_sel, renc_sel, 
+timer_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -575,6 +579,7 @@ reg v_hook_stall;
 // 00 0000 0100 0000 0000 0000 0000 01xx xx - SD     (16Bytes) (0x0100_0010 -> 0x0100_001f)
 // 00 0000 0100 0000 0000 0000 0000 1000 xx - ENC(L) (4 Bytes) (0x0100_0020 -> 0x0100_0023)
 // 00 0000 0100 0000 0000 0000 0000 1001 xx - ENC(R) (4 Bytes) (0x0100_0024 -> 0x0100_0027)
+// 00 0000 0100 0000 0000 0000 0000 1010 xx - TIMER  (4 Bytes) (0x0100_0028 -> 0x0100_002c)
 // 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP  (1KBytes) (0x0100_0400 -> 0x0100_07ff)
 //(31)
 
@@ -589,6 +594,8 @@ assign  sdc_sel = (master_o_wb_addr[29:2] ==    28'b0000_0001_0000_0000_0000_000
 assign lenc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1000);
 assign renc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1001);
 
+assign timer_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1010);
+
 assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b00_0000_0100_0000_0000_0001);
 
 wire	none_sel;
@@ -601,6 +608,7 @@ assign	none_sel = (!smpl_sel)
     && (!wb_scomp_sel)
     && (!lenc_sel)
     && (!renc_sel)
+    && (!timer_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
@@ -620,6 +628,7 @@ always @(posedge i_clk)
         || lenc_ack
         || renc_ack
         || wb_scomp_ack
+        || timer_ack
 `ifdef VERILATOR
         || v_hook_ack
 `endif
@@ -647,6 +656,8 @@ always @(posedge i_clk)
         master_i_wb_data <= lenc_data;
     else if (renc_ack)
         master_i_wb_data <= renc_data;
+    else if (timer_ack)
+        master_i_wb_data <= timer_data;
     else if (wb_scomp_ack)
         master_i_wb_data <= wb_scomp_data;
     else
@@ -661,6 +672,7 @@ assign	master_i_wb_stall =
         || sw_led_sel && sw_led_stall
         || lenc_sel && lenc_stall
         || renc_sel && renc_stall
+        || timer_sel && timer_stall
         || wb_scomp_sel && wb_scomp_stall;
 
 // Simple Device
@@ -707,6 +719,17 @@ always @(posedge i_clk)
 
 // IO Devices
 
+
+// Wishbone Timer
+wb_timer timer1(
+    i_clk, reset, 
+    master_o_wb_cyc, 
+    (master_o_wb_stb && timer_sel),
+    master_o_wb_we, 
+    master_o_wb_addr, master_o_wb_data,
+    master_o_wb_sel,
+    timer_ack, timer_stall, 
+    timer_data);
 
 // L/R Encoder Device
     wire [31:0] lenc_value;

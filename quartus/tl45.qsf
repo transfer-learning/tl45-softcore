@@ -265,6 +265,7 @@ set_location_assignment PIN_M23 -to o_rmot_phase
 set_location_assignment PIN_M22 -to o_watchdog
 set_location_assignment PIN_AE12 -to o_awake
 set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING OFF
+set_global_assignment -name VERILOG_FILE ../rtl/tl45_core/div.v
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wb_iodevice/wb_timer.sv
 set_global_assignment -name VHDL_FILE ../rtl/de2_bot_bs/VEL_CONTROL.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/clk_divider.sv

@@ -71,10 +71,10 @@ int main(int argc, char **argv) {
   printf("Initialized memory with %zu words\n", mem_ptr);
   fclose(f);
 #else
-  ram[0] = 0x0d100003;
-  ram[1] = 0x0d200002;
-  ram[2] = 0x18312000;
-  ram[3] = 0x0d100009;
+  ram[0] = 0x0d20FFFF;
+  ram[1] = 0x0d100003;
+  ram[2] = 0xb8312000;
+  ram[3] = 0x08403000;
 #endif
 #define DO_TRACE 1
 

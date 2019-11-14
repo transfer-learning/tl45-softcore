@@ -102,8 +102,9 @@ module tl45_comp(
     // SDRAM IO
     output wire sdram_clk;
     wire dram_clk_source;
+`ifndef VERILATOR
     dram_pll dram_clock_pll(i_clk, sdram_clk);
-
+`endif
     // assign sdram_clk = i_clk;
     output wire sdr_cs_n;
     output wire sdr_cke;

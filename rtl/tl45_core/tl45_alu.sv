@@ -67,7 +67,9 @@ localparam OP_ADD = 5'h1,
            OP_RET = 5'he,
            OP_SHL = 5'hA,
            OP_SHR = 5'hB,
-           OP_SHRA= 5'h5;
+           OP_SHRA= 5'h5,
+           OP_DIV = 5'h17,
+           OP_UDIV= 5'h18;
 
 // Check if branch is executing
 wire is_branch;
@@ -87,7 +89,9 @@ localparam ALUOP_NOP = 0,
            ALUOP_SHL = 9,
            ALUOP_SHR = 10,
            ALUOP_SHRA = 11,
-           ALUOP_MUL = 12;
+           ALUOP_MUL = 12,
+           ALUOP_DIV = 13,
+           ALUOP_UDIV = 14;
 
 // select alu op
 always @(*)
@@ -104,6 +108,8 @@ always @(*)
     OP_SHR: alu_op = ALUOP_SHR;
     OP_SHRA: alu_op = ALUOP_SHRA;
     OP_MUL: alu_op = ALUOP_MUL;
+    OP_DIV: alu_op = ALUOP_DIV;
+    OP_UDIV: alu_op = ALUOP_UDIV;
     default: alu_op = ALUOP_NOP;
     endcase
 
@@ -140,6 +146,23 @@ end
 always @(*) begin
     opt_b_2complement = (alu_op == ALUOP_SUB) ? (~{1'b0, i_sr2_val} + 1) : {1'b0, i_sr2_val};
 end
+always @(posedge i_clk) begin
+    if (alu_op == ALUOP_DIV || alu_op == ALUOP_UDIV) begin
+        if (div_valid)
+            div_start <= 0;
+        else
+            div_start <= 1;
+    end
+end
+reg div_start;
+initial div_start = 0;
+wire div_wr, div_signed, div_busy, div_valid, div_err;
+assign div_wr = (div_start == 0) && (alu_op == ALUOP_DIV || alu_op == ALUOP_UDIV);
+assign div_signed = alu_op == ALUOP_DIV;
+wire [31:0] div_result;
+div alu_div(i_clk, i_reset, div_wr, div_signed, i_sr1_val, i_sr2_val,
+		div_busy, div_valid, div_err, div_result);
+
 
 wire [31:0] mul_result;
 assign mul_result = i_sr1_val * i_sr2_val;
@@ -214,6 +237,8 @@ initial mul_wait = 0;
 always @(*) begin
     if (alu_op == ALUOP_MUL)
         stall_previous_stage = (mul_wait != `MUL_WAIT_TARGET);
+    else if (alu_op == ALUOP_DIV || alu_op == ALUOP_UDIV)
+        stall_previous_stage = (div_start == 0) || div_busy || !div_valid;
     else
         stall_previous_stage = 0;
 end
@@ -244,6 +269,14 @@ always @(posedge i_clk) begin
                 o_value <= 0;
                 mul_wait <= mul_wait + 1;
             end
+        end else if (alu_op == ALUOP_UDIV || alu_op == ALUOP_DIV) begin
+            if (div_valid) begin
+                o_value <= div_result;
+                o_dr <= i_dr;
+            end else begin
+                o_value <= 0;
+                o_dr <= 0;
+            end
         end else begin
         if (set_flags)
             flags <= {flg_overflow, flg_zero, flg_carry, flg_sign};
@@ -261,6 +294,14 @@ always @(*) begin
     end else if (alu_op == ALUOP_MUL) begin
         if (mul_wait == `MUL_WAIT_TARGET) begin
             o_of_val = mul_result;
+            o_of_reg = i_dr;
+        end else begin
+            o_of_val = 0;
+            o_of_reg = 0;
+        end
+    end else if (alu_op == ALUOP_DIV || alu_op == ALUOP_UDIV) begin
+        if (div_valid) begin
+            o_of_val = div_result;
             o_of_reg = i_dr;
         end else begin
             o_of_val = 0;

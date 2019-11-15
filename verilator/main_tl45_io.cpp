@@ -18,7 +18,7 @@ public:
   bool getData(unsigned int address, bool we, unsigned int &data) override {
 
     if (we) {
-      printf("%08x\n", data);
+      std::cout << std::hex << data << "\n";
     } else {
       std::cerr << "want input" << "\n";
       std::cin >> std::hex >> data;
@@ -205,34 +205,14 @@ void load_memory(Vtl45_comp *core, const std::vector<uint32_t> &words) {
   }
 }
 
-std::vector<uint32_t> read_expected(const std::string &file) {
-  std::vector<uint32_t> words;
-
-  std::ifstream infile(file);
-
-  unsigned char temp[4];
-  int read = 0;
-
-  for (std::string line; std::getline(infile, line); ) {
-
-    int i = line.find(" = ", 0);
-    i += 3;
-
-    std::string s;
-    s += "0x";
-    s += line.substr(i, 8);
-
-    auto result = (uint32_t ) std::stoul(s, nullptr, 16);
-
-    words.push_back(result);
-  }
-
-  return words;
-}
 
 int main(int argc, char **argv) {
   Verilated::commandArgs(argc, argv);
   TESTBENCH<Vtl45_comp> *tb = new TESTBENCH<Vtl45_comp>();
+
+  std::cout.setf(std::ios::unitbuf);
+  std::cerr.setf(std::ios::unitbuf);
+  std::cin.setf(std::ios::unitbuf);
 
   if (argc == 1) {
     printf("No file specified\n");

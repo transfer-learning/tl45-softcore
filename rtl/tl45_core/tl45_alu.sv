@@ -33,8 +33,8 @@ assign o_pipe_flush = flush_previous_stage || i_pipe_flush;
 // Input From previous stage
 input wire [4:0] i_opcode;
 input wire [3:0] i_dr;
-input wire [31:0] i_sr1_val, i_sr2_val,
-                  i_target_offset, i_pc;
+input wire signed [31:0] i_sr1_val, i_sr2_val;
+input wire [31:0]                  i_target_offset, i_pc;
 input wire [3:0] i_jmp_cond;
 
 // Operand Forward
@@ -116,7 +116,10 @@ always @(*)
 // optional b 2complememt
 reg [32:0] opt_b_2complement;
 // ALU Computaion Result
-reg [31:0] alu_result;
+reg signed [31:0] alu_result;
+
+wire signed [31:0] ashr_result;
+assign ashr_result = i_sr1_val >>> i_sr2_val[4:0];
 
 // Handle Flags
 wire flg_overflow;
@@ -179,7 +182,7 @@ always @(*) begin
         ALUOP_ADEC: begin alu_result = i_sr2_val - 4; carry_value = 0; end
         ALUOP_SHL: begin alu_result = i_sr2_val[31:5] != 0 ? 0 : (i_sr1_val << i_sr2_val[4:0]); carry_value = 0; end
         ALUOP_SHR: begin alu_result = i_sr2_val[31:5] != 0 ? 0 : (i_sr1_val >> i_sr2_val[4:0]); carry_value = 0; end
-        ALUOP_SHRA: begin alu_result = i_sr2_val[31:5] != 0 ? {32{i_sr1_val[31]}} :(i_sr1_val >>> i_sr2_val[4:0]); carry_value = 0; end
+        ALUOP_SHRA: begin alu_result = i_sr2_val[31:5] != 0 ? {32{i_sr1_val[31]}} : ashr_result; carry_value = 0; end
         default: begin alu_result = i_sr1_val; carry_value = 0; end
     endcase
 end
@@ -358,4 +361,4 @@ end
 
 `endif
 
-endmodule
+endmodule : tl45_alu

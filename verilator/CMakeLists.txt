@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(sim_tl45)
 
+set (CMAKE_CXX_STANDARD 17)
+
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_FLAGS -fsanitize=address)
 
@@ -27,6 +29,12 @@ add_executable(sim_tl45_comp
 
 target_link_libraries(sim_tl45_comp ${CMAKE_CURRENT_SOURCE_DIR}/obj_dir/Vtl45_comp__ALL.a)
 
+add_executable(sim_tl45_io
+        ${VERILATOR_INCLUDE_DIR}/verilated.cpp
+        ${VERILATOR_INCLUDE_DIR}/verilated_vcd_c.cpp
+        main_tl45_io.cpp)
+
+target_link_libraries(sim_tl45_io ${CMAKE_CURRENT_SOURCE_DIR}/obj_dir/Vtl45_comp__ALL.a)
 
 
 

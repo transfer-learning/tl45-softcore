@@ -23,6 +23,11 @@ public:
       std::cerr << "want input" << "\n";
       std::cin >> std::hex >> data;
       std::cerr << "got input: " << std::hex << data << "\n";
+
+      if (std::cin.fail() || std::cin.bad() || std::cin.eof()) {
+        throw std::runtime_error("EOF while expecting input");
+      }
+
     }
 
     return true;
@@ -231,9 +236,12 @@ int main(int argc, char **argv) {
 
   if (argc == 1) {
     printf("No file specified\n");
+    return 1;
   }
 
-  std::vector<uint32_t> words = read_file(argv[1]);
+  std::string filename(argv[1]);
+
+  std::vector<uint32_t> words = read_file(filename);
   if (words.empty()) {
     printf("Failed to read file or file is empty\n");
     return 1;
@@ -256,6 +264,8 @@ int main(int argc, char **argv) {
   );
 
   SerialDevice s(bus);
+
+  std::cerr << "simulating\n";
 
   while (!tb->done()) {
     tb->tick();

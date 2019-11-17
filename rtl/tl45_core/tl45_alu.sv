@@ -33,7 +33,7 @@ assign o_pipe_flush = flush_previous_stage || i_pipe_flush;
 // Input From previous stage
 input wire [4:0] i_opcode;
 input wire [3:0] i_dr;
-input wire signed [31:0] i_sr1_val, i_sr2_val;
+input wire [31:0] i_sr1_val, i_sr2_val;
 input wire [31:0]                  i_target_offset, i_pc;
 input wire [3:0] i_jmp_cond;
 
@@ -116,10 +116,10 @@ always @(*)
 // optional b 2complememt
 reg [32:0] opt_b_2complement;
 // ALU Computaion Result
-reg signed [31:0] alu_result;
+reg [31:0] alu_result;
 
 wire signed [31:0] ashr_result;
-assign ashr_result = i_sr1_val >>> i_sr2_val[4:0];
+assign ashr_result = $signed(i_sr1_val) >>> i_sr2_val[4:0];
 
 // Handle Flags
 wire flg_overflow;

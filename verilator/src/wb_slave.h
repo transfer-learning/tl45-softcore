@@ -60,7 +60,9 @@ struct WB_Slave {
 
       if (tx_in_progress) {
         if (!bus.o_wb_cyc && !ack) {
-          throw std::runtime_error("lmao cyc went low");
+          // throw std::runtime_error("lmao cyc went low");
+          tx_in_progress = false;
+          return;
         }
 
         if (ack) {

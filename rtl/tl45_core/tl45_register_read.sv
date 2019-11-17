@@ -76,16 +76,25 @@ wire is_branch;
 assign is_branch = i_opcode == 5'h0C;
 
 always @(posedge i_clk) begin
-    if (i_reset || i_pipe_flush || i_decode_err) begin
+    if (i_reset || i_pipe_flush) begin
         // Clear Buffer
         o_opcode <= 0;
         o_dr <= 0;
         o_sr1_val <= 0;
         o_sr2_val <= 0;
         o_pc <= 0;
-        o_decode_err <= i_decode_err && !i_reset;
+        o_decode_err <= 0;
+    end
+    else if (!i_pipe_stall && i_decode_err) begin
+        o_opcode <= 0;
+        o_dr <= 0;
+        o_sr1_val <= 0;
+        o_sr2_val <= 0;
+        o_pc <= 0;
+        o_decode_err <= 1;
     end
     else if (!i_pipe_stall) begin
+        o_decode_err <= 0;
         o_target_address_offset <= i_imm32;
         o_opcode <= i_opcode;
         o_pc <= i_pc;

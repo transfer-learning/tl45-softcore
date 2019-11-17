@@ -231,28 +231,28 @@ int main(int argc, char **argv) {
 
   load_memory(tb->m_core, words);
 
-  std::vector<uint32_t> inputs{};
-
-  std::vector<uint32_t> expected_outputs = read_expected("../output.txt");
-  std::cout << to_string(expected_outputs) << "\n";
-
-  std::vector<uint32_t> outputs;
-  test_case(words, inputs, outputs, expected_outputs);
-
-  std::cout << "expected outputs size: " << expected_outputs.size() << "\n";
-  std::cout << "outputs size: " << outputs.size() << "\n";
-
-  int diffs = 0;
-  for (int i = 0; i < std::min(outputs.size(), expected_outputs.size()); i++) {
-    if (outputs[i] != expected_outputs[i]) {
-      std::cout << "Diff: " << i << "\n";
-      diffs++;
-    }
-  }
-
-  std::cout << "Diffs: " << std::to_string(diffs) << "\n";
-
-  std::cout << to_string(inputs) << "\n";
+//  std::vector<uint32_t> inputs{};
+//
+//  std::vector<uint32_t> expected_outputs = read_expected("../output.txt");
+//  std::cout << to_string(expected_outputs) << "\n";
+//
+//  std::vector<uint32_t> outputs;
+//  test_case(words, inputs, outputs, expected_outputs);
+//
+//  std::cout << "expected outputs size: " << expected_outputs.size() << "\n";
+//  std::cout << "outputs size: " << outputs.size() << "\n";
+//
+//  int diffs = 0;
+//  for (int i = 0; i < std::min(outputs.size(), expected_outputs.size()); i++) {
+//    if (outputs[i] != expected_outputs[i]) {
+//      std::cout << "Diff: " << i << "\n";
+//      diffs++;
+//    }
+//  }
+//
+//  std::cout << "Diffs: " << std::to_string(diffs) << "\n";
+//
+//  std::cout << to_string(inputs) << "\n";
   // std::cout << to_string(outputs) << "\n";
 
 
@@ -264,14 +264,14 @@ int main(int argc, char **argv) {
   ram[3] = 0x08403000;
 #endif
 
-#if 0
+#if 1
 
 #define DO_TRACE 1
 
   tb->tick();
 
-  tb->m_core->tl45_comp__DOT__dprf__DOT__registers[1] = 0x4;
-  tb->m_core->tl45_comp__DOT__dprf__DOT__registers[2] = 2;
+  tb->m_core->tl45_comp__DOT__dprf__DOT__registers[4] = 0;
+  tb->m_core->tl45_comp__DOT__dprf__DOT__registers[7] = 0x80000000;
 
 #if DO_TRACE
   tb->opentrace("trace.vcd");

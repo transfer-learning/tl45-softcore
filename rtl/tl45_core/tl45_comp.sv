@@ -281,8 +281,8 @@ module tl45_comp(
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
         .i_reset(reset || i_halt_proc),
-        .i_pipe_stall(stall_fetch_decode || inst_decode_err),
-        .i_pipe_flush(flush_fetch_decode || i_halt_proc),
+        .i_pipe_stall(stall_fetch_decode),
+        .i_pipe_flush(flush_fetch_decode),
         .i_new_pc(alu_buf_ld_newpc || mem_buf_ld_newpc),
         .i_pc(alu_buf_ld_newpc ? alu_buf_br_pc : mem_buf_br_pc),
 
@@ -303,6 +303,8 @@ module tl45_comp(
         .current_state(fetch_current_state)
     );
 
+    wire decode_decode_err;
+
     tl45_decode decode(
         .i_clk(i_clk),
         .i_reset(reset),
@@ -322,7 +324,7 @@ module tl45_comp(
         .o_buf_sr2(decode_buf_sr2),
         .o_buf_imm(decode_buf_imm),
 
-        .o_decode_err(inst_decode_err)
+        .o_decode_err(decode_decode_err)
     );
 
     tl45_register_read rr(
@@ -340,6 +342,7 @@ module tl45_comp(
         .i_sr2(decode_buf_sr2),
         .i_imm32(decode_buf_imm),
         .i_pc(decode_buf_pc),
+        .i_decode_err(decode_decode_err),
 
         .o_dprf_read_a1(dprf_reg1),
         .o_dprf_read_a2(dprf_reg2),
@@ -357,8 +360,11 @@ module tl45_comp(
         .o_sr1_val(rr_buf_sr1_val),
         .o_sr2_val(rr_buf_sr2_val),
         .o_target_address_offset(rr_buf_target_address_offset),
-        .o_pc(rr_buf_pc)
+        .o_pc(rr_buf_pc),
+        .o_decode_err(rr_decode_err)
     );
+
+    wire rr_decode_err;
 
     assign opcode_breakout = rr_buf_opcode;
     assign o_lwopcode = rr_buf_pc[7:0];
@@ -382,6 +388,7 @@ module tl45_comp(
         .i_sr2_val(rr_buf_sr2_val),
         .i_target_offset(rr_buf_target_address_offset),
         .i_pc(rr_buf_pc),
+        .i_decode_err(rr_decode_err),
 
         .o_of_reg(of1_reg_alu),
         .o_of_val(of1_val_alu),

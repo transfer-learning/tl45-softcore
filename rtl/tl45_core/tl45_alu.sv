@@ -11,6 +11,7 @@ module tl45_alu(
     i_sr1_val, i_sr2_val,
     i_target_offset,
     i_pc,
+    i_decode_err,
     // Operand Forward Outputs
     o_of_reg, o_of_val,
     // Current stage buffer
@@ -19,6 +20,7 @@ module tl45_alu(
 input wire i_clk, i_reset;
 input wire i_pipe_stall, i_pipe_flush;
 output wire o_pipe_flush, o_pipe_stall;
+input wire i_decode_err;
 
 reg stall_previous_stage;
 wire flush_previous_stage;
@@ -26,7 +28,7 @@ initial begin
     stall_previous_stage = 0;
 end
 // Flush Previous Stages when 1) we stall OR Upper stage stalls
-assign o_pipe_stall = i_pipe_stall || stall_previous_stage;
+assign o_pipe_stall = i_pipe_stall || stall_previous_stage || i_decode_err;
 // Same with flush
 assign o_pipe_flush = flush_previous_stage || i_pipe_flush;
 
@@ -247,12 +249,13 @@ always @(*) begin
 end
 
 always @(posedge i_clk) begin
-    if (i_reset || o_pipe_flush) begin
-        if (i_reset)
+    if (i_reset || o_pipe_flush || i_decode_err) begin
+        if (i_reset) begin
             flags <= 0;
+            mul_wait <= 0;
+        end
         o_dr <= 0;
         o_value <= 0;
-        mul_wait <= 0;
     end
     else if (is_branch || alu_op == ALUOP_NOP) begin
         // Branch Logic

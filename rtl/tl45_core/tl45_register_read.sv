@@ -10,6 +10,7 @@ module tl45_register_read(
     i_opcode, 
     i_ri, // Register Immediate Mode
     i_dr, i_sr1, i_sr2, i_imm32, i_pc,
+    i_decode_err,
     // DPRF Connections
     o_dprf_read_a1, o_dprf_read_a2,
     i_dprf_d1, i_dprf_d2,
@@ -21,7 +22,8 @@ module tl45_register_read(
     o_dr, o_jmp_cond,
     o_sr1_val, o_sr2_val,
     o_target_address_offset,
-    o_pc
+    o_pc,
+    o_decode_err
 );
 // CPU Signals
 input wire i_clk, i_reset;
@@ -33,6 +35,7 @@ input wire [4:0] i_opcode; // 5bit opcode
 input wire i_ri; // Register(0) / Immediate(1) Addressing Mode
 input wire [3:0] i_dr, i_sr1, i_sr2; // DR(FLAGS), SR1, SR2 address
 input wire [31:0] i_imm32, i_pc;
+input wire i_decode_err;
 
 // DPRF Signals
 output wire [3:0] o_dprf_read_a1, o_dprf_read_a2;
@@ -47,6 +50,7 @@ output reg [3:0] o_dr;
 output reg [3:0] o_jmp_cond;
 output reg [31:0] o_sr1_val, o_sr2_val, o_pc;
 output reg [31:0] o_target_address_offset; // Target Jump Address Offset
+output reg o_decode_err;
 
 initial begin
     o_opcode = 0;
@@ -56,6 +60,7 @@ initial begin
     o_pc = 0;
     o_jmp_cond = 0;
     o_target_address_offset = 0;
+    o_decode_err = 0;
 end
 
 // Handle Stalls
@@ -71,13 +76,14 @@ wire is_branch;
 assign is_branch = i_opcode == 5'h0C;
 
 always @(posedge i_clk) begin
-    if (i_reset || i_pipe_flush) begin
+    if (i_reset || i_pipe_flush || i_decode_err) begin
         // Clear Buffer
         o_opcode <= 0;
         o_dr <= 0;
         o_sr1_val <= 0;
         o_sr2_val <= 0;
         o_pc <= 0;
+        o_decode_err <= i_decode_err && !i_reset;
     end
     else if (!i_pipe_stall) begin
         o_target_address_offset <= i_imm32;

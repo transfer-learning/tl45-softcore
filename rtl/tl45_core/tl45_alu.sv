@@ -172,8 +172,8 @@ assign mul_result = i_sr1_val * i_sr2_val;
 // Main ALU
 always @(*) begin
     case(alu_op)
-        ALUOP_ADD: {carry_value, alu_result} = i_sr1_val + i_sr2_val;
-        ALUOP_SUB: {carry_value, alu_result} = i_sr1_val - i_sr2_val;
+        ALUOP_ADD,
+        ALUOP_SUB: {carry_value, alu_result} = {1'b0, i_sr1_val} + opt_b_2comp;
         ALUOP_AND: begin alu_result = i_sr1_val & i_sr2_val; carry_value = 0; end
         ALUOP_OR: begin alu_result = i_sr1_val | i_sr2_val; carry_value = 0; end
         ALUOP_XOR: begin alu_result = i_sr1_val ^ i_sr2_val; carry_value = 0; end

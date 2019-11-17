@@ -149,7 +149,8 @@ always @(posedge i_clk) begin
                             (ri ? 4'b0 :             // I/R flag: sr2 <- 0
                             sr2));                   //     else: sr2 <- sr2  
             o_buf_imm    <= resolved_imm; // ri ? resolved_imm : 32'b0;
-        end else begin
+        end 
+        else begin
             o_buf_pc     <= i_buf_pc;
             o_buf_opcode <= opcode;
 
@@ -162,6 +163,7 @@ always @(posedge i_clk) begin
                             sr2));                   //     else: sr2 <- sr2  
             o_buf_imm    <= resolved_imm; // ri ? resolved_imm : 32'b0;
             o_decode_err <= 0;
+        end
     end
 end
 

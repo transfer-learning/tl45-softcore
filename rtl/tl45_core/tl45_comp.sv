@@ -240,9 +240,9 @@ module tl45_comp(
 	 wire [3:0] fetch_current_state;
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
-        .i_reset(reset || i_halt_proc),
+        .i_reset(reset),
         .i_pipe_stall(stall_fetch_decode),
-        .i_pipe_flush(flush_fetch_decode),
+        .i_pipe_flush(flush_fetch_decode || i_halt_proc),
         .i_new_pc(alu_buf_ld_newpc || mem_buf_ld_newpc),
         .i_pc(alu_buf_ld_newpc ? alu_buf_br_pc : mem_buf_br_pc),
 
@@ -325,6 +325,7 @@ module tl45_comp(
     );
 
     wire rr_decode_err;
+    assign inst_decode_err = rr_decode_err;
 
     assign opcode_breakout = rr_buf_opcode;
     assign o_lwopcode = rr_buf_pc[7:0];
@@ -541,8 +542,7 @@ reg v_hook_stall;
 // 00 0000 0100 0000 0000 0000 0000 0001 xx - SW/LED (4 Bytes) (0x0100_0004 -> 0x0100_0007)
 // 00 0000 0100 0000 0000 0000 0000 001x xx - LCD    (8 Bytes) (0x0100_0008 -> 0x0100_000f)
 // 00 0000 0100 0000 0000 0000 0000 01xx xx - SD     (16Bytes) (0x0100_0010 -> 0x0100_001f)
-// 00 0000 0100 0000 0000 0000 0000 1000 xx - ENC(L) (4 Bytes) (0x0100_0020 -> 0x0100_0023)
-// 00 0000 0100 0000 0000 0000 0000 1001 xx - ENC(R) (4 Bytes) (0x0100_0024 -> 0x0100_0027)
+// 00 0000 0100 0000 0000 0000 0000 100x xx - NOTHING
 // 00 0000 0100 0000 0000 0000 0000 1010 xx - TIMER  (4 Bytes) (0x0100_0028 -> 0x0100_002c)
 // 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP  (1KBytes) (0x0100_0400 -> 0x0100_07ff)
 //(31)
@@ -725,7 +725,7 @@ wb_sevenseg sevenseg_disp(
 `ifndef VERILATOR
     ssegs,
 `endif
-    (i_sw16 ? sdc_debug : fetch_buf_pc),
+    rr_buf_pc,
     inst_decode_err || i_sw16
 );
 

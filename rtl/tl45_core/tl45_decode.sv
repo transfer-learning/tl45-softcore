@@ -43,6 +43,7 @@ initial begin
     o_buf_sr1 = 0;
     o_buf_sr2 = 0;
     o_buf_imm = 0;
+    o_decode_err = 0;
 end
 
 // internal decoding, not always valid
@@ -124,7 +125,7 @@ assign o_pipe_stall = i_pipe_stall;
 assign o_pipe_flush = i_pipe_flush;
 
 always @(posedge i_clk) begin
-    if (i_reset || i_pipe_flush || (decode_err && !i_pipe_stall)) begin
+    if (i_reset || i_pipe_flush) begin
         o_buf_pc     <= 0;
         o_buf_opcode <= 0;
         o_buf_ri     <= 0;
@@ -132,21 +133,37 @@ always @(posedge i_clk) begin
         o_buf_sr1    <= 0;
         o_buf_sr2    <= 0;
         o_buf_imm    <= 0;
-        o_decode_err <= !i_reset && decode_err;
+        o_decode_err <= 0;
     end
     else if (!i_pipe_stall) begin
-        o_buf_pc     <= i_buf_pc;
-        o_buf_opcode <= opcode;
+        if (decode_err) begin
+            o_decode_err <= 1;
+            o_buf_pc     <= i_buf_pc;
+            o_buf_opcode <= opcode;
 
-        o_buf_ri     <= ri;
-        o_buf_dr     <= inst_sw ? 4'b0000 : dr; // dr is moved to sr2 for SW instruction.
-        o_buf_sr1    <= sr1;
-        o_buf_sr2    <= sr2_force_sp ? 4'b1111 : // CALL/RET: sr2 <- sp
-                        (inst_sw ? dr :          //       SW: sr2 <- dr
-                        (ri ? 4'b0 :             // I/R flag: sr2 <- 0
-                        sr2));                   //     else: sr2 <- sr2  
-        o_buf_imm    <= resolved_imm; // ri ? resolved_imm : 32'b0;
+            o_buf_ri     <= ri;
+            o_buf_dr     <= inst_sw ? 4'b0000 : dr; // dr is moved to sr2 for SW instruction.
+            o_buf_sr1    <= sr1;
+            o_buf_sr2    <= sr2_force_sp ? 4'b1111 : // CALL/RET: sr2 <- sp
+                            (inst_sw ? dr :          //       SW: sr2 <- dr
+                            (ri ? 4'b0 :             // I/R flag: sr2 <- 0
+                            sr2));                   //     else: sr2 <- sr2  
+            o_buf_imm    <= resolved_imm; // ri ? resolved_imm : 32'b0;
+        end 
+        else begin
+            o_buf_pc     <= i_buf_pc;
+            o_buf_opcode <= opcode;
 
+            o_buf_ri     <= ri;
+            o_buf_dr     <= inst_sw ? 4'b0000 : dr; // dr is moved to sr2 for SW instruction.
+            o_buf_sr1    <= sr1;
+            o_buf_sr2    <= sr2_force_sp ? 4'b1111 : // CALL/RET: sr2 <- sp
+                            (inst_sw ? dr :          //       SW: sr2 <- dr
+                            (ri ? 4'b0 :             // I/R flag: sr2 <- 0
+                            sr2));                   //     else: sr2 <- sr2  
+            o_buf_imm    <= resolved_imm; // ri ? resolved_imm : 32'b0;
+            o_decode_err <= 0;
+        end
     end
 end
 

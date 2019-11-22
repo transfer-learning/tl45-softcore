@@ -46,35 +46,7 @@ module tl45_comp(
     sdc_o_sck,
     sdc_o_mosi,
     sdc_i_miso,
-
-    bot_sonar_init,
-    bot_sonar_echo,
-    bot_sonar_sel,
-    bot_sonar_blank,
-
-    gleds,
-    i_lenc_a, i_lenc_b,
-    i_renc_a, i_renc_b,
-    o_lmot_phase, o_lmot_en,
-    o_rmot_phase, o_rmot_en,
-    i_asleep, o_awake,
-    o_watchdog
 );
-
-    output wire o_lmot_phase, o_lmot_en,
-                o_rmot_phase, o_rmot_en,
-                o_watchdog, o_awake;
-    input wire i_asleep;
-    assign o_awake = !i_asleep;
-    input wire i_lenc_a, i_lenc_b, i_renc_a, i_renc_b;
-
-    output wire [7:0] gleds;
-
-    output wire bot_sonar_init;
-    input wire bot_sonar_echo;
-    output wire [2:0] bot_sonar_sel;
-    output wire bot_sonar_blank;
-
     input i_sw16;
     output wire out_wb_stb,out_wb_err,out_wb_ack,out_wb_cyc, out_wb_stall, out_fetch_cache_hit;
 
@@ -263,18 +235,6 @@ module tl45_comp(
 
 
     // Stages
-
-
-//    tl45_nofetch fetch(
-//        .i_clk(i_clk),
-//        .i_reset(reset),
-//        .i_pipe_stall(stall_fetch_decode),
-//        .i_pipe_flush(flush_fetch_decode),
-//        .i_new_pc(alu_buf_ld_newpc),
-//        .i_pc(alu_buf_br_pc),
-//        .o_buf_pc(fetch_buf_pc),
-//        .o_buf_inst(fetch_buf_inst)
-//    );
 
     // tl45_prefetch
 	 wire [3:0] fetch_current_state;
@@ -533,18 +493,14 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 // components
 reg	    [31:0]	smpl_data; // Simple Device
 wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, wb_scomp_data, lenc_data, renc_data,
-timer_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, wb_scomp_stall, lenc_stall, renc_stall,
-timer_stall;
+wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, timer_data;
+wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, timer_stall;
 reg	    smpl_interrupt;
 wire	mem_ack;
 reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, wb_scomp_ack, lenc_ack, renc_ack, 
-timer_ack;
+wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, timer_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, wb_scomp_sel, lenc_sel, renc_sel, 
-timer_sel;
+wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, timer_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -591,13 +547,8 @@ assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
 assign  sdc_sel = (master_o_wb_addr[29:2] ==    28'b0000_0001_0000_0000_0000_0000_0010);
-// L/R Encoders 
-assign lenc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1000);
-assign renc_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1001);
 
 assign timer_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1010);
-
-assign  wb_scomp_sel = (master_o_wb_addr[29:8] == 22'b00_0000_0100_0000_0000_0001);
 
 wire	none_sel;
 assign	none_sel = (!smpl_sel)
@@ -606,9 +557,6 @@ assign	none_sel = (!smpl_sel)
     &&(!sw_led_sel)
     && (!sdc_sel)
     &&(!lcd_sel)
-    && (!wb_scomp_sel)
-    && (!lenc_sel)
-    && (!renc_sel)
     && (!timer_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
@@ -626,9 +574,6 @@ always @(posedge i_clk)
         || sw_led_ack
         || sdc_ack
         || lcd_ack
-        || lenc_ack
-        || renc_ack
-        || wb_scomp_ack
         || timer_ack
 `ifdef VERILATOR
         || v_hook_ack
@@ -653,14 +598,8 @@ always @(posedge i_clk)
         master_i_wb_data <= sdc_data;
     else if (lcd_ack)
         master_i_wb_data <= lcd_data;
-    else if (lenc_ack)
-        master_i_wb_data <= lenc_data;
-    else if (renc_ack)
-        master_i_wb_data <= renc_data;
     else if (timer_ack)
         master_i_wb_data <= timer_data;
-    else if (wb_scomp_ack)
-        master_i_wb_data <= wb_scomp_data;
     else
         master_i_wb_data <= 32'h0;
 
@@ -671,10 +610,7 @@ assign	master_i_wb_stall =
         || sdc_sel && sdc_stall
         || lcd_sel && lcd_stall
         || sw_led_sel && sw_led_stall
-        || lenc_sel && lenc_stall
-        || renc_sel && renc_stall
-        || timer_sel && timer_stall
-        || wb_scomp_sel && wb_scomp_stall;
+        || timer_sel && timer_stall;
 
 // Simple Device
 reg	[31:0]	smpl_register, power_counter;
@@ -732,31 +668,6 @@ wb_timer timer1(
     timer_ack, timer_stall, 
     timer_data);
 
-// L/R Encoder Device
-    wire [31:0] lenc_value;
-    wb_quad_encoder left_encoder(
-    i_clk, reset, 
-    master_o_wb_cyc, 
-    (master_o_wb_stb && lenc_sel),
-    master_o_wb_we, 
-    master_o_wb_addr, master_o_wb_data,
-    master_o_wb_sel,
-    lenc_ack, lenc_stall, 
-    lenc_data,
-    i_lenc_a, i_lenc_b, lenc_value);
-
-    wire [31:0] renc_value;
-    wb_quad_encoder right_encoder(
-    i_clk, reset, 
-    master_o_wb_cyc, 
-    (master_o_wb_stb && renc_sel),
-    master_o_wb_we, 
-    master_o_wb_addr, master_o_wb_data,
-    master_o_wb_sel,
-    renc_ack, renc_stall, 
-    renc_data,
-    i_renc_a, i_renc_b, renc_value);
-
 
     wire sdc_int;
     wire [31:0] sdc_debug;
@@ -790,101 +701,6 @@ wb_timer timer1(
         .i_bus_grant(1'b1),
         .o_debug(sdc_debug)
     );
-
-    // Wishbone Transceiver
-
-    wire o_sc_iocyc, o_sc_iowr, o_sc_clk;
-    wire [7:0] o_sc_ioaddr;
-    wire [15:0] io_sc_iodata;
-
-    wb_scomp_trans scomp(
-        .i_clk(i_clk),
-        .i_reset(reset),
-        .i_wb_cyc(master_o_wb_cyc),
-        .i_wb_stb(master_o_wb_stb && wb_scomp_sel),
-        .i_wb_we(master_o_wb_we),
-        .i_wb_addr(master_o_wb_addr),
-        .i_wb_data(master_o_wb_data),
-        .i_wb_sel(master_o_wb_sel),
-        .o_wb_stall(wb_scomp_stall),
-        .o_wb_ack(wb_scomp_ack),
-        .o_wb_data(wb_scomp_data),
-
-        .o_sc_clk(o_sc_clk),
-        .o_sc_iocyc(o_sc_iocyc),
-        .o_sc_iowr(o_sc_iowr),
-        .o_sc_ioaddr(o_sc_ioaddr),
-        .io_sc_iodata(io_sc_iodata)
-    );
-`ifndef VERILATOR
-green_leds scomp_leds(o_sc_clk, o_sc_ioaddr, io_sc_iodata, o_sc_iocyc, o_sc_iowr, gleds);
-
-wire clk_64hz;
-clk_divider #(.OCLK_FREQ(32)) sixty_four_hz_gen(i_clk, reset, clk_64hz);
-
-wire clk_100mhz, locked_100mhz;
-main_pll master_pll(i_clk, clk_100mhz, locked_100mhz);
-
-wire l_int_warn;
-wire l_watchdog;
-wire [15:0] l_yeet;
-VEL_CONTROL left(
-    clk_100mhz,
-    !reset,
-    (o_sc_iocyc && o_sc_ioaddr == 8'h83),
-    o_sc_iowr,
-    io_sc_iodata,
-    lenc_value,
-    clk_64hz,
-    !i_asleep,
-    1,
-    o_lmot_phase,
-    o_lmot_en,
-    l_int_warn,
-    l_watchdog,
-    l_yeet
-);
-
-wire r_int_warn;
-wire r_watchdog;
-wire [15:0] r_yeet;
-VEL_CONTROL right(
-    clk_100mhz,
-    !reset,
-    (o_sc_iocyc && o_sc_ioaddr == 8'h8B),
-    o_sc_iowr,
-    io_sc_iodata,
-    renc_value,
-    clk_64hz,
-    !i_asleep,
-    1,
-    o_rmot_phase,
-    o_rmot_en,
-    r_int_warn,
-    r_watchdog,
-    r_yeet
-);
-assign o_watchdog = (r_watchdog || l_watchdog);
-// SCOMP IODEVICES
-// 294 CLK DIV
-wire sonar_clk;
-clk_divider #(.OCLK_FREQ(85_000)) one_seventyK_clk(i_clk, reset, sonar_clk);
-
-wire sonar_int;
-SONAR fuck_sonar(
-    sonar_clk,
-    !reset,
-    (o_sc_ioaddr >= 8'hA0 && o_sc_ioaddr <= 8'hB7 && o_sc_iocyc),
-    o_sc_iowr,
-    bot_sonar_echo,
-    o_sc_ioaddr[4:0],
-    bot_sonar_init,
-    bot_sonar_blank,
-    bot_sonar_sel,
-    sonar_int,
-    io_sc_iodata
-);
-`endif
 
 // SevenSeg
 wb_sevenseg sevenseg_disp(
@@ -1015,65 +831,6 @@ wb_switch_led de2_switch_led(
     );
 
 `endif
-
-    // Misc
-
-//    wire		o_ram_cke;
-//	wire		o_ram_cs_n,
-//		o_ram_ras_n, o_ram_cas_n, o_ram_we_n;
-//	wire	[1:0]	o_ram_bs;
-//	wire	[12:0]	o_ram_addr;
-//	wire		o_ram_dmod;
-//	wire	[15:0]	i_ram_data;
-//	wire	[15:0]	o_ram_data;
-//	wire	[1:0]	o_ram_dqm;
-//	wire [31:0]	o_debug;
-//
-//    wbsdram sdram(
-//        .i_clk(i_clk),
-//		.i_wb_cyc(o_wb_cyc),
-//        .i_wb_stb(o_wb_stb),
-//        .i_wb_we(o_wb_we),
-//        .i_wb_addr(o_wb_addr),
-//        .i_wb_data(o_wb_data),
-//        .i_wb_sel(o_wb_sel),
-//        .o_wb_ack(i_wb_ack),
-//        .o_wb_stall(i_wb_stall),
-//        .o_wb_data(i_wb_data),
-//
-//        .o_ram_cs_n(o_ram_cs_n),
-//        .o_ram_cke(o_ram_cke),
-//        .o_ram_ras_n(o_ram_ras_n),
-//        .o_ram_cas_n(o_ram_cas_n),
-//        .o_ram_we_n(o_ram_we_n),
-//        .o_ram_bs(o_ram_bs),
-//        .o_ram_addr(o_ram_addr),
-//        .o_ram_dmod(o_ram_dmod),
-//        .i_ram_data(i_ram_data),
-//        .o_ram_data(o_ram_data),
-//        .o_ram_dqm(o_ram_dqm),
-//
-//		.o_debug(o_debug)
-//    );
-//
-//    wire [15:0] dq;
-//
-//    assign i_ram_data = dq;
-//    assign dq = o_ram_we_n ? o_ram_data : 32'hzzzz;
-//
-//
-//    IS42VM16400K issi(
-//        .dq(dq),
-//        .addr(o_ram_addr),
-//        .ba(o_ram_bs),
-//        .clk(i_clk),
-//        .cke(o_ram_cke),
-//        .csb(o_ram_cs_n),
-//        .rasb(o_ram_ras_n),
-//        .casb(o_ram_cas_n),
-//        .web(o_ram_we_n),
-//        .dqm(o_ram_dqm)
-//    );
 
 `ifndef VERILATOR
 	wire		rx_stb;

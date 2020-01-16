@@ -235,7 +235,7 @@ end
 assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
-`define MUL_WAIT_TARGET 3'h5
+`define MUL_WAIT_TARGET 4'h3
 reg [2:0] mul_wait;
 initial mul_wait = 0;
 
@@ -249,7 +249,7 @@ always @(*) begin
 end
 
 always @(posedge i_clk) begin
-    if (i_reset || o_pipe_flush || i_decode_err) begin
+    if (i_reset || i_pipe_flush || i_decode_err) begin
         if (i_reset) begin
             flags <= 0;
             mul_wait <= 0;

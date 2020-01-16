@@ -840,28 +840,49 @@ wb_switch_led de2_switch_led(
 `endif
 
 `ifndef VERILATOR
-	wire		rx_stb;
-	wire	[7:0]	rx_data;
-	rxuartlite #(`UARTSETUP) rxtransport(i_clk,
-					i_uart, rx_stb, rx_data);
+// DBGBUS
+// 	wire		rx_stb;
+// 	wire	[7:0]	rx_data;
+// 	rxuartlite #(`UARTSETUP) rxtransport(i_clk,
+// 					i_uart, rx_stb, rx_data);
 
-	wire		tx_stb, tx_busy;
-	wire	[7:0]	tx_data;
-	txuartlite #(`UARTSETUP) txtransport(i_clk,
-					tx_stb, tx_data, o_uart, tx_busy);
+// 	wire		tx_stb, tx_busy;
+// 	wire	[7:0]	tx_data;
+// 	txuartlite #(`UARTSETUP) txtransport(i_clk,
+// 					tx_stb, tx_data, o_uart, tx_busy);
 
-hbbus	genbus(i_clk,
-		// The receive transport wires
-		rx_stb, rx_data,
-		// The bus control output wires
-		dbgbus_o_wb_cyc, dbgbus_o_wb_stb, dbgbus_o_wb_we,
-        dbgbus_o_wb_addr, dbgbus_o_wb_data, dbgbus_o_wb_sel,
-		//	The return bus wires
-		dbgbus_i_wb_ack, dbgbus_i_wb_stall, dbgbus_i_wb_err, dbgbus_i_wb_data,
-		// An interrupt line
-		0,
-		// The return transport wires
-		tx_stb, tx_data, tx_busy);
+// hbbus	genbus(i_clk,
+// 		// The receive transport wires
+// 		rx_stb, rx_data,
+// 		// The bus control output wires
+// 		dbgbus_o_wb_cyc, dbgbus_o_wb_stb, dbgbus_o_wb_we,
+//         dbgbus_o_wb_addr, dbgbus_o_wb_data, dbgbus_o_wb_sel,
+// 		//	The return bus wires
+// 		dbgbus_i_wb_ack, dbgbus_i_wb_stall, dbgbus_i_wb_err, dbgbus_i_wb_data,
+// 		// An interrupt line
+// 		0,
+// 		// The return transport wires
+// 		tx_stb, tx_data, tx_busy);
+
+// IHEX
+
+wishbone wb_dbgbus(.i_clk(i_clk), .i_reset(reset));
+
+wb_master_breakout dbg_bus_breakout(
+    dbgbus_i_wb_ack, dbgbus_i_wb_err, dbgbus_i_wb_stall,
+    dbgbus_i_wb_data, dbgbus_o_wb_stb, dbgbus_o_wb_cyc, dbgbus_o_wb_we,
+    dbgbus_o_wb_sel, dbgbus_o_wb_addr, dbgbus_o_wb_data,
+    wb_dbgbus
+);
+
+wire tx_busy;
+wire rx_rdy, tx_stb;
+wire [7:0] rx_data;
+wire [7:0] tx_data;
+uart_rx rx(i_clk, i_uart, rx_rdy, rx_data);
+uart_tx tx(i_clk, tx_data, tx_stb, o_uart, tx_busy);
+ihex hex(i_clk, reset, rx_data, rx_rdy, tx_data, tx_stb, tx_busy, wb_dbgbus.master);
+
 `endif
 endmodule : tl45_comp
 

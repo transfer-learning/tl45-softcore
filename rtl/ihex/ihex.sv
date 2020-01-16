@@ -119,7 +119,7 @@ always @(posedge i_clk) begin
             addr <= {hex_to_val(i_rx_data), 12'h0};
             state <= ADDR2;
         end else if (state == ADDR2) begin
-            addr <= {addr[15:12], hex_to_val(i_rx_data), 4'h0};
+            addr <= {addr[15:12], hex_to_val(i_rx_data), 8'h0};
             computed_sum <= computed_sum + {addr[15:12], hex_to_val(i_rx_data)};
             state <= ADDR3;
         end else if (state == ADDR3) begin

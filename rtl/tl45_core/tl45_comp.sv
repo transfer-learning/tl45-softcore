@@ -65,8 +65,8 @@ module tl45_comp(
 `else
     wire [6:0] ssegs[8];
 `endif
-	input i_uart;
-	output o_uart;
+	input wire i_uart;
+	output wire o_uart;
     input wire i_halt_proc;
     input wire i_clk, i_reset;
     output wire inst_decode_err;
@@ -100,7 +100,7 @@ module tl45_comp(
 `ifdef VERILATOR
     assign reset = i_reset;
 `else
-	 assign reset = !i_reset;
+	assign reset = !i_reset;
 `endif
 
 	 
@@ -544,11 +544,11 @@ reg v_hook_stall;
 // 00 0000 0100 0000 0000 0000 0000 01xx xx - SD     (16Bytes) (0x0100_0010 -> 0x0100_001f)
 // 00 0000 0100 0000 0000 0000 0000 100x xx - NOTHING
 // 00 0000 0100 0000 0000 0000 0000 1010 xx - TIMER  (4 Bytes) (0x0100_0028 -> 0x0100_002c)
-// 00 0000 0100 0000 0000 0001 xxxx xxxx xx - SCOMP  (1KBytes) (0x0100_0400 -> 0x0100_07ff)
+
+// 11 1111 1111 1111 1111 1111 1111 111x xx - UART (8 Bytes) (0xFFFF_FFF8 -> 0xFFFF_FFFF)
 //(31)
 
 assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
-assign	smpl_sel = (master_o_wb_addr[29:21] == 9'h1); // Simple device gets a big block
 assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
@@ -557,14 +557,22 @@ assign  sdc_sel = (master_o_wb_addr[29:2] ==    28'b0000_0001_0000_0000_0000_000
 
 assign timer_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1010);
 
+// UART
+wire uart_sel;
+assign uart_sel = (master_o_wb_addr[29:1] ==    29'b11_1111_1111_1111_1111_1111_1111_111 );
+wire uart_ack, uart_stall, uart_err;
+wire [31:0] uart_data;
+
+// SEL
 wire	none_sel;
-assign	none_sel = (!smpl_sel)
-    &&(!mem_sel)
+assign	none_sel =
+    (!mem_sel)
     &&(!sseg_sel)
     &&(!sw_led_sel)
     && (!sdc_sel)
     &&(!lcd_sel)
     && (!timer_sel)
+    && (!uart_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
@@ -575,13 +583,14 @@ always @(posedge i_clk)
 
 // Master Bus Respond
 always @(posedge i_clk)
-    master_i_wb_ack <= (smpl_ack)
-        || (mem_ack)
+    master_i_wb_ack <=
+           mem_ack
         || sseg_ack
         || sw_led_ack
         || sdc_ack
         || lcd_ack
         || timer_ack
+        || uart_ack
 `ifdef VERILATOR
         || v_hook_ack
 `endif
@@ -593,9 +602,7 @@ always @(posedge i_clk)
         master_i_wb_data <= v_hook_data;
     else
 `endif
-    if (smpl_ack)
-        master_i_wb_data <= smpl_data;
-    else if (mem_ack)
+    if (mem_ack)
         master_i_wb_data <= mem_data;
     else if (sseg_ack)
         master_i_wb_data <= sseg_data;
@@ -607,61 +614,19 @@ always @(posedge i_clk)
         master_i_wb_data <= lcd_data;
     else if (timer_ack)
         master_i_wb_data <= timer_data;
+    else if (uart_ack)
+        master_i_wb_data <= uart_data;
     else
         master_i_wb_data <= 32'h0;
 
 assign	master_i_wb_stall = 
-           ((smpl_sel) && (smpl_stall))
-        || ((mem_sel)  && (mem_stall))
+           ((mem_sel)  && (mem_stall))
         || (sseg_sel) && (sseg_stall)
         || sdc_sel && sdc_stall
         || lcd_sel && lcd_stall
         || sw_led_sel && sw_led_stall
-        || timer_sel && timer_stall;
-
-// Simple Device
-reg	[31:0]	smpl_register, power_counter;
-reg	[29:0]	bus_err_address;
-
-always @(posedge i_clk)
-    smpl_ack <= ((master_o_wb_stb)&&(smpl_sel));
-assign	smpl_stall = 1'b0;
-initial	smpl_interrupt = 1'b0;
-always @(posedge i_clk)
-    if ((master_o_wb_stb)&&(smpl_sel)&&(master_o_wb_we))
-    begin
-        case(master_o_wb_addr[3:0])
-        4'h1: smpl_register  <= master_o_wb_data;
-        4'h4: smpl_interrupt <= master_o_wb_data[0];
-        default: begin end
-        endcase
-    end
-
-always @(posedge i_clk)
-    case(master_o_wb_addr[3:0])
-    4'h0:    smpl_data <= 32'h20191028;
-    4'h1:    smpl_data <= smpl_register;
-    4'h2:    smpl_data <= { bus_err_address, 2'b00 };
-    4'h3:    smpl_data <= power_counter;
-    4'h4:    smpl_data <= { 31'h0, smpl_interrupt };
-    default: smpl_data <= 32'h00;
-    endcase
-
-// Start our clocks since power up counter from zero
-initial	power_counter = 0;
-always @(posedge i_clk)
-    // Count up from zero until the top bit is set
-    if (!power_counter[31])
-        power_counter <= power_counter + 1'b1;
-    else // Once the top bit is set, keep it set forever
-        power_counter[30:0] <= power_counter[30:0] + 1'b1;
-
-initial	bus_err_address = 0;
-always @(posedge i_clk)
-    if (master_i_wb_err)
-        bus_err_address <= master_o_wb_addr; // possibly wrong
-
-// IO Devices
+        || timer_sel && timer_stall
+        || uart_sel && uart_stall;
 
 
 // Wishbone Timer
@@ -782,30 +747,6 @@ wb_switch_led de2_switch_led(
         .o_wb_data(mem_data)
     );
 `else
-	// wire	[15:0]	ram_data;
-	// wire		ram_drive_data;
-	// reg	[15:0]	r_ram_data;
-    // // real mem
-    // assign sdr_dq = (ram_drive_data) ? ram_data : 16'bzzzz_zzzz_zzzz_zzzz;
-	// reg	[15:0]	r_ram_data_ext_clk;
-
-    // // 2FF Sync
-	// always @(posedge i_clk)
-	// 	r_ram_data_ext_clk <= sdr_dq;
-	// always @(posedge i_clk)
-	// 	r_ram_data <= r_ram_data_ext_clk;
-
-	// wire [31:0] sdram_debug;
-
-	// wbsdram yeetmemory(i_clk,
-	// 	master_o_wb_cyc, (mem_sel && master_o_wb_stb), master_o_wb_we, 
-    //     master_o_wb_addr, master_o_wb_data, master_o_wb_sel,
-	// 		mem_ack, mem_stall, mem_data,
-	// 	sdr_cs_n, sdr_cke, sdr_ras_n, sdr_cas_n, sdr_we_n,
-	// 		sdr_ba, sdr_addr_fake,
-	// 		ram_drive_data, r_ram_data, ram_data, sdr_dqm,
-	// 	sdram_debug);
-
     sdram #(
         .SDRAM_MHZ(50),
         .SDRAM_ADDR_W(22),
@@ -840,29 +781,6 @@ wb_switch_led de2_switch_led(
 `endif
 
 `ifndef VERILATOR
-// DBGBUS
-// 	wire		rx_stb;
-// 	wire	[7:0]	rx_data;
-// 	rxuartlite #(`UARTSETUP) rxtransport(i_clk,
-// 					i_uart, rx_stb, rx_data);
-
-// 	wire		tx_stb, tx_busy;
-// 	wire	[7:0]	tx_data;
-// 	txuartlite #(`UARTSETUP) txtransport(i_clk,
-// 					tx_stb, tx_data, o_uart, tx_busy);
-
-// hbbus	genbus(i_clk,
-// 		// The receive transport wires
-// 		rx_stb, rx_data,
-// 		// The bus control output wires
-// 		dbgbus_o_wb_cyc, dbgbus_o_wb_stb, dbgbus_o_wb_we,
-//         dbgbus_o_wb_addr, dbgbus_o_wb_data, dbgbus_o_wb_sel,
-// 		//	The return bus wires
-// 		dbgbus_i_wb_ack, dbgbus_i_wb_stall, dbgbus_i_wb_err, dbgbus_i_wb_data,
-// 		// An interrupt line
-// 		0,
-// 		// The return transport wires
-// 		tx_stb, tx_data, tx_busy);
 
 // IHEX
 
@@ -879,15 +797,10 @@ wbuart_with_ihex hexuart
     dbgbus_i_wb_stall, dbgbus_i_wb_ack, dbgbus_i_wb_err,
     dbgbus_o_wb_addr, dbgbus_o_wb_data, dbgbus_i_wb_data,
     // Slave Wishbone
-    0, 0,
-    0, 4'h0,
-    dummy1, dummy2, dummy3,
-    30'h0, 32'h0, dummy4
-
-    // i_wb_cyc, i_wb_stb,
-    // i_wb_we, i_wb_sel,
-    // o_wb_stall, o_wb_ack, o_wb_err,
-    // i_wb_addr, i_wb_data, o_wb_data
+    master_o_wb_cyc, (master_o_wb_stb && uart_sel),
+    master_o_wb_we, master_o_wb_sel,
+    uart_stall, uart_ack, uart_err,
+    master_o_wb_addr, master_o_wb_data, uart_data
 );
 
 `endif

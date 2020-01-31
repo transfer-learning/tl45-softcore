@@ -49,6 +49,12 @@ int main(int argc, char **argv) {
 
   tb->m_core->i_rx = 1;
   tb->reset();
+
+  // Bus setup
+  tb->m_core->i_wb_stb = 1;
+  tb->m_core->i_wb_cyc = 1;
+  tb->m_core->i_wb_we = 1;
+
   for (int i = 0; i < 5000; ++i) {
     tb->tick();
     if (i % 10 == 8) {

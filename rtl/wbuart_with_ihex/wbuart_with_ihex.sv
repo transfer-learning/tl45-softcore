@@ -1,6 +1,6 @@
 module wbuart_with_ihex
 #(
-    parameter I_CLOCK_FREQ=50_000000,
+    parameter I_CLOCK_FREQ=50000000,
     parameter BAUD_RATE=115200
 )
 (
@@ -85,7 +85,7 @@ ihex intel_hex_controller(
 /* WBUART CONTROLLER */
 wire uart_tx_stb;
 wire [7:0] uart_tx_data;
-wbuart_with_buffer uart_ctrlr
+wbuart_with_buffer #(.I_CLOCK_FREQ(I_CLOCK_FREQ), .BAUD_RATE(BAUD_RATE)) uart_ctrlr
 (i_clk, i_reset,
 rx_data, rx_stb && slave_mode,
 uart_tx_data, uart_tx_stb, tx_busy,
@@ -110,8 +110,7 @@ end
 always @(posedge i_clk) begin
     if (i_reset) begin
         slave_mode <= 0;
-    end
-    if (i_wb_stb && i_wb_cyc && i_wb_we) begin
+    end else if (i_wb_stb && i_wb_cyc && i_wb_we) begin
         slave_mode <= 1;
     end
 end

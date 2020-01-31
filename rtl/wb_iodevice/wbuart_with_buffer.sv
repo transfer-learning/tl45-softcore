@@ -79,12 +79,12 @@ always @(posedge i_clk) begin
     end
 
     // Wishbone
-    if (i_reset || (!i_wb_cyc)) begin // Abort transaction if 
+    if (i_reset || (!i_wb_cyc)) begin // Abort transaction if !cyc
         wb_state <= WBIDLE;
         o_tx_stb <= 0;
     end else if (wb_state == WBIDLE) begin
         if (i_wb_stb && i_wb_cyc) begin
-            if (i_wb_addr[0]) begin
+            if (i_wb_addr[0]) begin // Addr end in 1 is Data port
                 if (i_wb_we) begin
                     o_tx_data <= i_wb_data[7:0];
                     if (!i_tx_busy) begin // if transimit is idle
@@ -102,7 +102,7 @@ always @(posedge i_clk) begin
                     end else
                         o_wb_data <= 32'h0;
                 end
-            end else begin
+            end else begin // Data Port ends in 0
                 if (i_wb_we) begin // Write Control
                     wb_state <= WBACK;
                 end else begin // Read Control
@@ -116,7 +116,7 @@ always @(posedge i_clk) begin
     end else if (wb_state == WBEXEC) begin
         if (!i_tx_busy) begin
             o_tx_stb <= 1;
-            wb_state <= WBIDLE;
+            wb_state <= WBACK;
         end
     end else if (wb_state == WBACK) begin
         wb_state <= WBIDLE;

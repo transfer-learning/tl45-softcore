@@ -39,13 +39,12 @@ begin
         "7": hex_to_val = 4'h7;
         "8": hex_to_val = 4'h8;
         "9": hex_to_val = 4'h9;
-        "0": hex_to_val = 4'h0;
         "a", "A": hex_to_val = 4'ha;
         "b", "B": hex_to_val = 4'hb;
         "c", "C": hex_to_val = 4'hc;
         "d", "D": hex_to_val = 4'hd;
         "e", "E": hex_to_val = 4'he;
-        "F", "F": hex_to_val = 4'hf;
+        "f", "F": hex_to_val = 4'hf;
         default: hex_to_val = 4'h0;
     endcase
 end
@@ -75,7 +74,7 @@ reg filled_high;
 reg [7:0] cmp_sum;
 reg [15:0] addr_offset; initial addr_offset = 0; // 32bit mode offset
 wire [7:0] computed_sum_tcmp = (~computed_sum + 1); // 2's complement of computed_sum
-wire [15:0] write_addr = addr + buffer_fill;
+wire [15:0] write_addr = addr + {8'h0, buffer_fill};
 
 reg [3:0] wb_sel;
 reg [29:0] wb_addr;

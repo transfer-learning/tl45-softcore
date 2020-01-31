@@ -1,0 +1,59 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Fri Jan 31 20:57:42 2020
+[*]
+[dumpfile] "/home/codetector/projects/github.com/transfer-learning/tl45-softcore/tests/wbuart_with_ihex/build/ihex_uart_trace.vcd"
+[dumpfile_mtime] "Fri Jan 31 20:54:30 2020"
+[dumpfile_size] 186477
+[savefile] "/home/codetector/projects/github.com/transfer-learning/tl45-softcore/tests/wbuart_with_ihex/sim_wave_template.gtkw"
+[timestart] 9328
+[size] 1916 1029
+[pos] -1 -1
+*-10.000000 12302 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.wbuart_with_ihex.
+[sst_width] 211
+[signals_width] 198
+[sst_expanded] 1
+[sst_vpaned_height] 293
+@28
+TOP.wbuart_with_ihex.i_clk
+TOP.wbuart_with_ihex.i_reset
+TOP.wbuart_with_ihex.i_rx
+TOP.wbuart_with_ihex.o_tx
+@200
+-UART_RX
+@28
+[color] 1
+TOP.wbuart_with_ihex.rx_part.i_rx
+[color] 2
+TOP.wbuart_with_ihex.rx_part.i_rx_db
+[color] 2
+TOP.wbuart_with_ihex.rx_part.sample
+@22
+[color] 2
+TOP.wbuart_with_ihex.rx_part.internal_state[3:0]
+@28
+[color] 2
+TOP.wbuart_with_ihex.rx_part.o_rdy
+@820
+[color] 2
+TOP.wbuart_with_ihex.rx_part.o_data[7:0]
+@200
+-UART_TX
+@28
+TOP.wbuart_with_ihex.tx_part.o_tx
+TOP.wbuart_with_ihex.tx_part.o_busy
+@200
+-iHEX
+@22
+[color] 5
+TOP.wbuart_with_ihex.intel_hex_controller.state[3:0]
+@820
+[color] 5
+TOP.wbuart_with_ihex.intel_hex_controller.o_tx_data[7:0]
+@28
+[color] 5
+TOP.wbuart_with_ihex.intel_hex_controller.o_tx_stb
+[pattern_trace] 1
+[pattern_trace] 0

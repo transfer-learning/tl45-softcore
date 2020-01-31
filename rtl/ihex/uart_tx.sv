@@ -20,7 +20,8 @@ initial begin
     o_tx = 1;
 end
 
-localparam SAMPLE_INTERVAL = (I_CLOCK_FREQ / BAUD_RATE);
+// Subtract 1 due to counter is zero starting
+localparam SAMPLE_INTERVAL = (I_CLOCK_FREQ / BAUD_RATE) - 1;
 integer counter;
 reg [3:0] state;
 reg [7:0] data;

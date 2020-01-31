@@ -44,14 +44,14 @@ reg slave_mode; initial slave_mode = 0;
 /* SERIAL RX */
 wire [7:0] rx_data;
 wire rx_stb;
-uart_rx rx_part(i_clk, i_rx, rx_stb, rx_data);
+uart_rx #(.I_CLOCK_FREQ(I_CLOCK_FREQ), .BAUD_RATE(BAUD_RATE)) rx_part(i_clk, i_rx, rx_stb, rx_data);
 /* END SERIAL RX */
 
 /* SERIAL TX */
 reg [7:0] tx_data;
 reg tx_stb;
 wire tx_busy;
-uart_tx tx_part (
+uart_tx #(.I_CLOCK_FREQ(I_CLOCK_FREQ), .BAUD_RATE(BAUD_RATE)) tx_part (
  i_clk,
  tx_data, tx_stb,
  o_tx, tx_busy 

@@ -171,7 +171,7 @@ module wbscope(i_data_clk, i_ce, i_trigger, i_data,
 		assign	bw_reset_complete = bw_reset_request;
 	end else begin
 		reg		r_reset_complete;
-		(* ASYNC_REG = "TRUE" *) reg	[2:0]	q_iflags;
+		reg	[2:0]	q_iflags;
 		reg	[2:0]	r_iflags;
 
 		// Resets are synchronous to the bus clock, not the data clock
@@ -189,7 +189,7 @@ module wbscope(i_data_clk, i_ce, i_trigger, i_data,
 		assign	dw_manual_trigger = r_iflags[1];
 		assign	dw_disable_trigger = r_iflags[0];
 
-		(* ASYNC_REG = "TRUE" *) reg	q_reset_complete;
+		reg	q_reset_complete;
 		reg	qq_reset_complete;
 		// Pass an acknowledgement back from the data clock to the bus
 		// clock that the reset has been accomplished
@@ -227,7 +227,7 @@ module wbscope(i_data_clk, i_ce, i_trigger, i_data,
 	//
 	// Writes take place on the data clock
 	// The counter is unsigned
-	(* ASYNC_REG="TRUE" *) reg	[(HOLDOFFBITS-1):0]	counter;
+	reg	[(HOLDOFFBITS-1):0]	counter;
 
 	reg		dr_stopped;
 	initial	dr_stopped = 1'b0;
@@ -328,7 +328,7 @@ module wbscope(i_data_clk, i_ce, i_trigger, i_data,
 		// for many clocks.  Swapping is thus easy--two flip flops to
 		// protect against meta-stability and we're done.
 		//
-		(* ASYNC_REG = "TRUE" *) reg	[2:0]	q_oflags;
+		reg	[2:0]	q_oflags;
 		reg	[2:0]	r_oflags;
 		initial	q_oflags = 3'h0;
 		initial	r_oflags = 3'h0;

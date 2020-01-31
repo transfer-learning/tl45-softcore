@@ -240,6 +240,8 @@ set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_location_assignment PIN_AC23 -to sdc_o_cs
 set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING OFF
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wb_iodevice/wbuart_with_buffer.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wbuart_with_ihex/wbuart_with_ihex.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/ihex/wb_master_breakout.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/ihex/uart_tx.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/ihex/uart_rx.sv

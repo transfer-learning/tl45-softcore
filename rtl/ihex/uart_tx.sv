@@ -1,7 +1,7 @@
 module uart_tx
 #(
-    parameter CLK_SPEED = 50_000000,
-    parameter BAUD = 115200
+    parameter I_CLOCK_FREQ = 50_000000,
+    parameter BAUD_RATE = 115200
 )
 (
  i_clk,
@@ -20,7 +20,7 @@ initial begin
     o_tx = 1;
 end
 
-localparam SAMPLE_INTERVAL = (CLK_SPEED / BAUD);
+localparam SAMPLE_INTERVAL = (I_CLOCK_FREQ / BAUD_RATE);
 integer counter;
 reg [3:0] state;
 reg [7:0] data;

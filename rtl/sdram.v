@@ -124,12 +124,6 @@ localparam SDRAM_TRFC_CYCLES = (60 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
 //-----------------------------------------------------------------
 
 // Xilinx placement pragmas:
-//synthesis attribute IOB of command_q is "TRUE"
-//synthesis attribute IOB of addr_q is "TRUE"
-//synthesis attribute IOB of dqm_q is "TRUE"
-//synthesis attribute IOB of cke_q is "TRUE"
-//synthesis attribute IOB of bank_q is "TRUE"
-//synthesis attribute IOB of data_q is "TRUE"
 
 reg [CMD_W-1:0]        command_q;
 reg [SDRAM_ROW_W-1:0]  addr_q;

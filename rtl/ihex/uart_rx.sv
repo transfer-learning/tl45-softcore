@@ -1,12 +1,12 @@
 module uart_rx
 #(
-    parameter CLK_SPEED = 50_000000,
-    parameter BAUD = 115200
+    parameter I_CLOCK_FREQ = 50_000000,
+    parameter BAUD_RATE = 115200
 )
 (i_clk, i_rx, o_rdy, o_data);
 
-localparam QUARTER_CLK = (CLK_SPEED / BAUD / 4);
-localparam SAMPLE_INTERVAL = (CLK_SPEED / BAUD);
+localparam QUARTER_CLK = (I_CLOCK_FREQ / BAUD_RATE / 4);
+localparam SAMPLE_INTERVAL = (I_CLOCK_FREQ / BAUD_RATE);
 
 input wire i_clk, i_rx;
 output wire o_rdy;

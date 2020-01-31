@@ -866,22 +866,29 @@ wb_switch_led de2_switch_led(
 
 // IHEX
 
-wishbone wb_dbgbus(.i_clk(i_clk), .i_reset(reset));
+wire dummy1, dummy2, dummy3;
+wire [31:0] dummy4;
 
-wb_master_breakout dbg_bus_breakout(
-    dbgbus_i_wb_ack, dbgbus_i_wb_err, dbgbus_i_wb_stall,
-    dbgbus_i_wb_data, dbgbus_o_wb_stb, dbgbus_o_wb_cyc, dbgbus_o_wb_we,
-    dbgbus_o_wb_sel, dbgbus_o_wb_addr, dbgbus_o_wb_data,
-    wb_dbgbus
+wbuart_with_ihex hexuart
+(
+    i_clk, reset,
+    i_uart, o_uart,
+    // Master Wishbone
+    dbgbus_o_wb_cyc, dbgbus_o_wb_stb,
+    dbgbus_o_wb_we, dbgbus_o_wb_sel,
+    dbgbus_i_wb_stall, dbgbus_i_wb_ack, dbgbus_i_wb_err,
+    dbgbus_o_wb_addr, dbgbus_o_wb_data, dbgbus_i_wb_data,
+    // Slave Wishbone
+    0, 0,
+    0, 4'h0,
+    dummy1, dummy2, dummy3,
+    30'h0, 32'h0, dummy4
+
+    // i_wb_cyc, i_wb_stb,
+    // i_wb_we, i_wb_sel,
+    // o_wb_stall, o_wb_ack, o_wb_err,
+    // i_wb_addr, i_wb_data, o_wb_data
 );
-
-wire tx_busy;
-wire rx_rdy, tx_stb;
-wire [7:0] rx_data;
-wire [7:0] tx_data;
-uart_rx rx(i_clk, i_uart, rx_rdy, rx_data);
-uart_tx tx(i_clk, tx_data, tx_stb, o_uart, tx_busy);
-ihex hex(i_clk, reset, rx_data, rx_rdy, tx_data, tx_stb, tx_busy, wb_dbgbus.master);
 
 `endif
 endmodule : tl45_comp

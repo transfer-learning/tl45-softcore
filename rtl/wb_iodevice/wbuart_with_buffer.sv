@@ -1,7 +1,7 @@
 module wbuart_with_buffer
 #(
-    parameter MASTER_CLOCK_FREQ = 50_000_000,
-    parameter BAUD = 115200
+    parameter I_CLOCK_FREQ = 50_000_000,
+    parameter BAUD_RATE = 115200
 )
 (i_clk, i_reset,
 i_rx_data, i_rx_stb,
@@ -45,7 +45,7 @@ wire rx_full = rx_next_write == rx_read_pointer;
 
 initial begin
     rx_read_pointer = 0;
-    write_pointer = 0;
+    rx_write_pointer = 0;
     rx_overrun = 0;
 end
 
@@ -74,8 +74,8 @@ always @(posedge i_clk) begin
             rx_overrun <= 1;
             rx_read_pointer <= rx_read_pointer + 1;
         end
-        rx_buffer[write_pointer] <= i_rx_data;
-        write_pointer <= rx_next_write;
+        rx_buffer[rx_write_pointer] <= i_rx_data;
+        rx_write_pointer <= rx_next_write;
     end
 
     // Wishbone

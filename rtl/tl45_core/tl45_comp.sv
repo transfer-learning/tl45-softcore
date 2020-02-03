@@ -499,16 +499,13 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 //
 // Define some wires for returning values to the bus from our various
 // components
-reg	    [31:0]	smpl_data; // Simple Device
-wire	[31:0]	mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, sdc_data, lcd_data, timer_data;
-wire	smpl_stall, mem_stall, sseg_stall, sw_led_stall, sdc_stall, lcd_stall, timer_stall;
-reg	    smpl_interrupt;
+wire	[31:0] mem_data; // MEM
+wire    [31:0] sseg_data, sw_led_data, lcd_data, timer_data;
+wire	mem_stall, sseg_stall, sw_led_stall, lcd_stall, timer_stall;
 wire	mem_ack;
-reg	    smpl_ack;
-wire    sseg_ack, sw_led_ack, sdc_ack, lcd_ack, timer_ack;
+wire    sseg_ack, sw_led_ack, lcd_ack, timer_ack;
 
-wire	smpl_sel, mem_sel, sseg_sel, sw_led_sel, sdc_sel, lcd_sel, timer_sel;
+wire	mem_sel, sseg_sel, sw_led_sel, lcd_sel, timer_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -519,32 +516,17 @@ reg v_hook_stall;
     assign v_hook_stb = (master_o_wb_addr[29:12] == 18'h4ff) && master_o_wb_stb;
 `endif
 
-// Nothing should be assigned to the null page
-//
-// 0000 0000 0000 0000 0000 0000 0000 00
-// 0000 0000 0xxx xxxx xxxx xxxx xxxx xx - DRAM     8MB
-// 0000 0000 1xxx xxxx xxxx xxxx xxxx xx - SCOMP    8MB
-//         1 0000 0000 0000 0000 0000 00 - SSEG
-//         1 0000 0000 0000 0000 0000 01 - SW/LEDS
-//         1 0000 0000 0000 0000 0000 1x - LCD
-//         1 0000 0000 0000 0000 0010 xx - SD Card
-//         1 0000 0000 0000 01xx xxxx xx - SCOMP
-//         1 0011 1111 11xx xxxx xxxx xx - Verilator
-
-
 // Yaotian's Memory Map
 // ------- BUS ADDRESS SAPCE ----------- --SEL
 //
 // 00 0000 0000 0000 0000 0000 0000 0000 00
 // 00 0000 000x xxxx xxxx xxxx xxxx xxxx xx - DRAM 8 MB (0x0000_0000 -> 0x007f_ffff)
-// 00 0000 001x xxxx xxxx xxxx xxxx xxxx xx - Simple Device 8 MB (0x0080_0000 -> 0x00ff_ffff)
+
 // 00 0000 0100 0000 0000 0000 0000 0000 xx - SSEG   (4 Bytes) (0x0100_0000 -> 0x0100_0003)
 // 00 0000 0100 0000 0000 0000 0000 0001 xx - SW/LED (4 Bytes) (0x0100_0004 -> 0x0100_0007)
 // 00 0000 0100 0000 0000 0000 0000 001x xx - LCD    (8 Bytes) (0x0100_0008 -> 0x0100_000f)
-// 00 0000 0100 0000 0000 0000 0000 01xx xx - SD     (16Bytes) (0x0100_0010 -> 0x0100_001f)
-// 00 0000 0100 0000 0000 0000 0000 100x xx - NOTHING
-// 00 0000 0100 0000 0000 0000 0000 1010 xx - TIMER  (4 Bytes) (0x0100_0028 -> 0x0100_002c)
 
+// 11 1111 1111 1111 1111 1111 1111 110x xx - TIMR (8 Bytes) (0xFFFF_FFF0 -> 0xFFFF_FFF7)
 // 11 1111 1111 1111 1111 1111 1111 111x xx - UART (8 Bytes) (0xFFFF_FFF8 -> 0xFFFF_FFFF)
 //(31)
 
@@ -553,13 +535,12 @@ assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
 assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
 assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
                 ||master_o_wb_addr[29:0] ==     30'h400003);
-assign  sdc_sel = (master_o_wb_addr[29:2] ==    28'b0000_0001_0000_0000_0000_0000_0010);
 
-assign timer_sel = (master_o_wb_addr[29:0] == 30'b00_0000_0100_0000_0000_0000_0000_1010);
+assign timer_sel = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_110);
 
 // UART
 wire uart_sel;
-assign uart_sel = (master_o_wb_addr[29:1] ==    29'b11_1111_1111_1111_1111_1111_1111_111 );
+assign uart_sel = (master_o_wb_addr[29:1] ==  29'b11_1111_1111_1111_1111_1111_1111_111);
 wire uart_ack, uart_stall, uart_err;
 wire [31:0] uart_data;
 
@@ -569,7 +550,6 @@ assign	none_sel =
     (!mem_sel)
     &&(!sseg_sel)
     &&(!sw_led_sel)
-    && (!sdc_sel)
     &&(!lcd_sel)
     && (!timer_sel)
     && (!uart_sel)
@@ -587,7 +567,6 @@ always @(posedge i_clk)
            mem_ack
         || sseg_ack
         || sw_led_ack
-        || sdc_ack
         || lcd_ack
         || timer_ack
         || uart_ack
@@ -608,8 +587,6 @@ always @(posedge i_clk)
         master_i_wb_data <= sseg_data;
     else if (sw_led_ack)
         master_i_wb_data <= sw_led_data;
-    else if (sdc_ack)
-        master_i_wb_data <= sdc_data;
     else if (lcd_ack)
         master_i_wb_data <= lcd_data;
     else if (timer_ack)
@@ -622,7 +599,6 @@ always @(posedge i_clk)
 assign	master_i_wb_stall = 
            ((mem_sel)  && (mem_stall))
         || (sseg_sel) && (sseg_stall)
-        || sdc_sel && sdc_stall
         || lcd_sel && lcd_stall
         || sw_led_sel && sw_led_stall
         || timer_sel && timer_stall
@@ -639,40 +615,6 @@ wb_timer timer1(
     master_o_wb_sel,
     timer_ack, timer_stall, 
     timer_data);
-
-
-    wire sdc_int;
-    wire [31:0] sdc_debug;
-
-    sdspi #(
-        .OPT_SPI_ARBITRATION(0),
-        .OPT_CARD_DETECT(0),
-        .INITIAL_CLKDIV(7'h3e),
-        .STARTUP_CLOCKS(0)
-    ) sdcard(
-        .i_clk(i_clk),
-
-        .i_wb_cyc(master_o_wb_cyc),
-        .i_wb_stb(master_o_wb_stb && sdc_sel),
-        .i_wb_we(master_o_wb_we),
-        // remap address to what sdspi expects
-        .i_wb_addr(master_o_wb_addr[1:0]),
-        .i_wb_data(master_o_wb_data),
-        .i_wb_sel(master_o_wb_sel),
-        .o_wb_stall(sdc_stall),
-        .o_wb_ack(sdc_ack),
-        .o_wb_data(sdc_data),
-
-        .o_cs_n(sdc_o_cs_n),
-        .o_sck(sdc_o_sck),
-        .o_mosi(sdc_o_mosi),
-        .i_miso(sdc_i_miso),
-        .i_card_detect(1'b1),
-
-        .o_int(sdc_int),
-        .i_bus_grant(1'b1),
-        .o_debug(sdc_debug)
-    );
 
 // SevenSeg
 wb_sevenseg sevenseg_disp(
@@ -781,11 +723,6 @@ wb_switch_led de2_switch_led(
 `endif
 
 `ifndef VERILATOR
-
-// IHEX
-
-wire dummy1, dummy2, dummy3;
-wire [31:0] dummy4;
 
 wbuart_with_ihex hexuart
 (

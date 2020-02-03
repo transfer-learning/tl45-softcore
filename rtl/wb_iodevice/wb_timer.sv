@@ -14,9 +14,9 @@ o_wb_data);
     output	reg	    [31:0] o_wb_data;
     
     parameter CLOCK_FREQ = 50_000_000;
-    localparam COUNTER_TOP = CLOCK_FREQ / 1_000;
+    localparam COUNTER_TOP = CLOCK_FREQ / 1_000_000;
     
-    reg [31:0] timer_counter;
+    reg [63:0] timer_counter;
     reg [31:0] div_counter;
 
     initial begin
@@ -42,11 +42,6 @@ o_wb_data);
             RESPOND_READ, RESPOND_WRITE: o_wb_ack = i_wb_cyc; // This is effectively a "1"
             default: o_wb_ack = 0;
         endcase
-        // Selector for data
-        case(current_state)
-            RESPOND_READ: o_wb_data = timer_counter;
-            default: o_wb_data = 32'h0;
-        endcase
     end
 
     always @(posedge i_clk) 
@@ -63,6 +58,7 @@ o_wb_data);
             div_counter <= 0;
         end
         else begin
+            o_wb_data <= i_wb_addr[0] ? timer_counter[63:32] : timer_counter[31:0];
             current_state <= RESPOND_READ;
             if (div_counter >= COUNTER_TOP) begin
                 timer_counter <= timer_counter + 1;

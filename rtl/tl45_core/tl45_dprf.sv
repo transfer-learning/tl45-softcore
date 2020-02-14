@@ -5,47 +5,36 @@ module tl45_dprf(
 	input wire [3:0] readAdd2,
 	input wire [3:0] writeAdd, 
 	input wire [31:0] dataI,
-	input wire wrREG,
 	input wire clk,
 	input wire reset,
 	output reg [31:0] dataO1,
 	output reg [31:0] dataO2
 );
 
-reg [31:0] registers[15];
+reg [31:0] registers[16];
 
 initial begin
-	for (integer i = 0; i < 15; i++)
+	for (integer i = 0; i < 16; i++)
 		registers[i] = 0;
 end
 
 // Read Port 1 selection
 always @(*)// TODO Maybe?
 begin
-	if (readAdd1 == 0)
-		dataO1 = 0;
-	else
-		dataO1 = registers[readAdd1 - 1];
+	dataO1 = registers[readAdd1];
 end
 
 // Read Port 2 selection
 always @(*)
 begin
-	if (readAdd2 == 0)
-		dataO2 = 0;
-	else
-		dataO2 = registers[readAdd2 - 1];
+	dataO2 = registers[readAdd2];
 end
 
 // Write
 always @(posedge clk)
 begin
-	if (reset) begin
-		for (integer i = 0; i < 15; i++)
-			registers[i] <= 0;
-	end
-	else if (wrREG && (writeAdd > 0)) begin
-		registers[writeAdd - 1] <= dataI;
+	if (writeAdd > 0) begin
+		registers[writeAdd] <= dataI;
 	end
 end
 

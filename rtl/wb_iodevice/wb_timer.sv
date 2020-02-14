@@ -54,7 +54,10 @@ o_wb_data);
         // Strobe at idle
         if (i_wb_we) begin
             current_state <= RESPOND_WRITE;
-            timer_counter <= i_wb_data;
+            if (i_wb_addr[0])
+                timer_counter[63:32] <= i_wb_data;
+            else
+                timer_counter[31:0] <= i_wb_data;
             div_counter <= 0;
         end
         else begin
@@ -69,7 +72,10 @@ o_wb_data);
     end else if ((current_state == RESPOND_WRITE || current_state == RESPOND_READ) && i_wb_cyc && i_wb_stb) begin
         // Strobe (Pipelined request)
         if (i_wb_we) begin
-            timer_counter <= i_wb_data;
+            if (i_wb_addr[0])
+                timer_counter[63:32] <= i_wb_data;
+            else
+                timer_counter[31:0] <= i_wb_data;
             div_counter <= 0;
             current_state <= RESPOND_WRITE;
         end

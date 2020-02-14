@@ -169,8 +169,13 @@ div alu_div(i_clk, i_reset, div_wr, div_signed, i_sr1_val, i_sr2_val,
 		div_busy, div_valid, div_err, div_result);
 
 
-wire [31:0] mul_result;
-assign mul_result = i_sr1_val * i_sr2_val;
+wire [63:0] mul_result;
+// `ifndef VERILATOR
+alu_mult_altera altera_mult(i_clk, i_sr1_val, i_sr2_val, mul_result);
+// `else
+// assign mul_result = i_sr1_val * i_sr2_val;
+// `endif
+
 // Main ALU
 always @(*) begin
     case(alu_op)
@@ -235,7 +240,7 @@ end
 assign flush_previous_stage = is_branch && do_jump; // Controlls JUMP
 assign o_ld_newpc = is_branch && do_jump; // when jump happens, loads new PC
 
-`define MUL_WAIT_TARGET 4'h3
+`define MUL_WAIT_TARGET 3'h3
 reg [2:0] mul_wait;
 initial mul_wait = 0;
 
@@ -244,6 +249,8 @@ always @(*) begin
         stall_previous_stage = (mul_wait != `MUL_WAIT_TARGET);
     else if (alu_op == ALUOP_DIV || alu_op == ALUOP_UDIV)
         stall_previous_stage = (div_start == 0) || div_busy || !div_valid;
+    // else if (alu_op == ALUOP_ADD || alu_op == ALUOP_SUB)
+    //     stall_previous_stage = (addsub_wait != `ADDSUB_WAIT_TARGET);
     else
         stall_previous_stage = 0;
 end
@@ -267,7 +274,7 @@ always @(posedge i_clk) begin
         // ALU Logic
         if (alu_op == ALUOP_MUL) begin // MUL waits extra cycle
             if (mul_wait == `MUL_WAIT_TARGET) begin
-                o_value <= mul_result;
+                o_value <= mul_result[31:0];
                 o_dr <= i_dr;
                 mul_wait <= 0;
             end else begin
@@ -299,7 +306,7 @@ always @(*) begin
         o_of_reg = 0;
     end else if (alu_op == ALUOP_MUL) begin
         if (mul_wait == `MUL_WAIT_TARGET) begin
-            o_of_val = mul_result;
+            o_of_val = mul_result[31:0];
             o_of_reg = i_dr;
         end else begin
             o_of_val = 0;

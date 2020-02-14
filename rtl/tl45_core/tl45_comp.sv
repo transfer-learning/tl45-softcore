@@ -16,20 +16,10 @@ module tl45_comp(
     sdr_addr    ,
     sdr_dq      ,
     inst_decode_err,
+	 o_valid,
 `ifndef VERILATOR
 	ssegs,
 `endif
-    opcode_breakout,
-    o_valid,
-    o_lwopcode,
-    o_clk,
-    o_halt,
-    out_wb_stb,
-    out_wb_err,
-    out_wb_ack,
-    out_wb_cyc,
-    out_wb_stall,
-    out_fetch_cache_hit,
     i_sw16,
 
     o_leds,
@@ -45,21 +35,15 @@ module tl45_comp(
     sdc_o_cs,
     sdc_o_sck,
     sdc_o_mosi,
-    sdc_i_miso,
+    sdc_i_miso
 );
     input i_sw16;
-    output wire out_wb_stb,out_wb_err,out_wb_ack,out_wb_cyc, out_wb_stall, out_fetch_cache_hit;
-
+	 
     inout wire [7:0] io_disp_data;
     output wire o_valid;
     output wire o_disp_rw, o_disp_blon, o_disp_en_n, o_disp_on_n, o_disp_rs;
     input wire [15:0] i_switches;
     output wire [15:0] o_leds;
-    output wire [4:0] opcode_breakout;
-    output wire [7:0] o_lwopcode;
-    output wire o_clk, o_halt;
-    assign o_clk = i_clk;
-    assign o_halt = i_halt_proc;
 `ifndef VERILATOR
     output wire [6:0] ssegs[8];
 `else
@@ -85,7 +69,7 @@ module tl45_comp(
     output wire sdr_we_n;
     output wire [1:0] sdr_dqm;
     output wire [1:0] sdr_ba;
-    output wire [11:0] sdr_addr;
+    output wire [12:0] sdr_addr;
     inout wire [15:0] sdr_dq;
 
     // SD Card SPI
@@ -96,11 +80,15 @@ module tl45_comp(
     assign sdc_o_cs = sdc_o_cs_n;
 	 
 	 // RESET
-	 wire reset;
 `ifdef VERILATOR
+	 wire reset;
     assign reset = i_reset;
 `else
-	assign reset = !i_reset;
+	reg reset, reset_buf;
+	initial reset = 1;
+	initial reset_buf = 1;
+	always @(posedge i_clk)
+		{reset, reset_buf} <= {reset_buf, ~i_reset};
 `endif
 
 	 
@@ -133,13 +121,6 @@ module tl45_comp(
     reg master_i_wb_ack, master_i_wb_err;
     wire master_i_wb_stall;
     reg [31:0] master_i_wb_data;
-
-    // WISHBONE BREAKOUT
-    assign out_wb_ack = master_i_wb_ack;
-    assign out_wb_cyc = master_o_wb_cyc;
-    assign out_wb_err = master_i_wb_err;
-    assign out_wb_stb = master_o_wb_stb;
-    assign out_wb_stall = master_i_wb_stall;
 
 
     // dbgbus Wishbone
@@ -229,9 +210,8 @@ module tl45_comp(
         .dataO1(dprf_reg1_val),
         .dataO2(dprf_reg2_val),
         .writeAdd(dprf_wreg),
-        .dataI(dprf_wreg_val),
-        .wrREG(dprf_we_wreg)
-    );
+        .dataI(dprf_wreg_val)
+	  );
 
 
     // Stages
@@ -259,7 +239,6 @@ module tl45_comp(
 
         .o_buf_pc(fetch_buf_pc),
         .o_buf_inst(fetch_buf_inst),
-        .o_cache_hit(out_fetch_cache_hit),
         .current_state(fetch_current_state)
     );
 
@@ -327,8 +306,6 @@ module tl45_comp(
     wire rr_decode_err;
     assign inst_decode_err = rr_decode_err;
 
-    assign opcode_breakout = rr_buf_opcode;
-    assign o_lwopcode = rr_buf_pc[7:0];
     assign o_valid = !(stall_rr_alu || stall_rr_mem);
 
     assign of1_reg = of1_reg_alu != 0 ? of1_reg_alu : of1_reg_mem;
@@ -691,8 +668,8 @@ wb_switch_led de2_switch_led(
 `else
     sdram #(
         .SDRAM_MHZ(50),
-        .SDRAM_ADDR_W(22),
-        .SDRAM_COL_W(8),
+        .SDRAM_ADDR_W(25),
+        .SDRAM_COL_W(10),
         .SDRAM_TARGET("ALTERA") // This is fake news, but whatever
     ) memram (
         i_clk,

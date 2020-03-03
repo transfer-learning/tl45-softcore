@@ -67,10 +67,10 @@ module tl45_comp(
     output wire sdr_ras_n;
     output wire sdr_cas_n;
     output wire sdr_we_n;
-    output wire [1:0] sdr_dqm;
+    output wire [3:0] sdr_dqm;
     output wire [1:0] sdr_ba;
     output wire [12:0] sdr_addr;
-    inout wire [15:0] sdr_dq;
+    inout wire [31:0] sdr_dq;
 
     // SD Card SPI
     output	wire sdc_o_sck, sdc_o_mosi;
@@ -497,24 +497,22 @@ reg v_hook_stall;
 // ------- BUS ADDRESS SAPCE ----------- --SEL
 //
 // 00 0000 0000 0000 0000 0000 0000 0000 00
-// 00 0000 000x xxxx xxxx xxxx xxxx xxxx xx - DRAM 8 MB (0x0000_0000 -> 0x007f_ffff)
+// 00 000x xxxx xxxx xxxx xxxx xxxx xxxx xx - DRAM 128 MB (0x0000_0000 -> 0x07ff_ffff)
 
-// 00 0000 0100 0000 0000 0000 0000 0000 xx - SSEG   (4 Bytes) (0x0100_0000 -> 0x0100_0003)
-// 00 0000 0100 0000 0000 0000 0000 0001 xx - SW/LED (4 Bytes) (0x0100_0004 -> 0x0100_0007)
-// 00 0000 0100 0000 0000 0000 0000 001x xx - LCD    (8 Bytes) (0x0100_0008 -> 0x0100_000f)
-
+// 11 1111 1111 1111 1111 1111 1111 100x xx - LCD    (8 Bytes) (0xFFFF_FFE0 -> 0xFFFF_FFE7)
+// 11 1111 1111 1111 1111 1111 1111 1010 xx - SW/LED (4 Bytes) (0xFFFF_FFE8 -> 0xFFFF_FFEB)
+// 11 1111 1111 1111 1111 1111 1111 1011 xx - SSEG   (4 Bytes) (0xFFFF_FFEC -> 0xFFFF_FFEF)
 // 11 1111 1111 1111 1111 1111 1111 110x xx - TIMR (8 Bytes) (0xFFFF_FFF0 -> 0xFFFF_FFF7)
 // 11 1111 1111 1111 1111 1111 1111 111x xx - UART (8 Bytes) (0xFFFF_FFF8 -> 0xFFFF_FFFF)
 //(31)
 
-assign	mem_sel  = (master_o_wb_addr[29:21] == 9'h0); // mem selected
-assign  sseg_sel = (master_o_wb_addr[29:0] == 30'h400000); // SSEG
-assign  sw_led_sel = (master_o_wb_addr[29:0] == 30'h400001); // SWITCH LED
-assign lcd_sel = (master_o_wb_addr[29:0] ==     30'h400002
-                ||master_o_wb_addr[29:0] ==     30'h400003);
+assign	mem_sel     = (master_o_wb_addr[29:25] == 5'b00_000); // mem selected
 
-assign timer_sel = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_110);
-
+// MMIO
+assign lcd_sel      = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_100_); // LCD
+assign sw_led_sel   = (master_o_wb_addr[29:0] == 30'b11_1111_1111_1111_1111_1111_1111_1010); // SWITCH LED
+assign sseg_sel     = (master_o_wb_addr[29:0] == 30'b11_1111_1111_1111_1111_1111_1111_1011); // SSEG
+assign timer_sel    = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_110_);
 // UART
 wire uart_sel;
 assign uart_sel = (master_o_wb_addr[29:1] ==  29'b11_1111_1111_1111_1111_1111_1111_111);

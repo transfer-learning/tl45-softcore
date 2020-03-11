@@ -43,6 +43,8 @@ wire [8:0] rx_size = rx_write_pointer - rx_read_pointer;
 wire [8:0] rx_next_write = rx_write_pointer + 1;
 wire rx_full = rx_next_write == rx_read_pointer;
 
+assign o_wb_stall = internal_stall;
+
 initial begin
     rx_read_pointer = 0;
     rx_write_pointer = 0;

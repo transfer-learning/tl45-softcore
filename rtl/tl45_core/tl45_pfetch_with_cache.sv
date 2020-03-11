@@ -11,13 +11,8 @@ module tl45_pfetch_with_cache(
     i_wb_ack, i_wb_stall, i_wb_err,
     i_wb_data,
     // Buffer
-    o_buf_pc, o_buf_inst,
-    o_cache_hit,
-    current_state
+    o_buf_pc, o_buf_inst
 );
-
-output wire o_cache_hit;
-
 input wire i_clk, i_reset; // Sys CLK, Reset
 input wire i_pipe_stall, i_pipe_flush; // Stall, Flush
 
@@ -58,7 +53,7 @@ localparam IDLE = 0,
            FETCH_WAIT_ACK = 2,
            FETCH_NEXT = 3,
            LAST_STATE = 4;
-output reg [3:0] current_state;
+reg [3:0] current_state;
 initial current_state = IDLE;
 
 // Cache Process:
@@ -92,8 +87,6 @@ assign cache_index = current_pc[13:6];
 assign cache_word_index = current_pc[13:2];
 assign cache_hit = (current_pc[31:14] == {9'h0, cache_tags[cache_index]})
                 && (cache_valid[cache_index]); // Cache Hit
-// DEBUG CACHE HIT
-assign o_cache_hit = cache_hit;
 wire [31:0] next_o_buf_pc;
 assign next_o_buf_pc = cache_valid[cache_index] ? current_pc : 32'h0;
 wire [31:0] next_o_buf_inst;
@@ -112,16 +105,17 @@ assign fetch_cache_tag = o_wb_addr[20:12];
 integer cacheline_fill_counter;
 initial cacheline_fill_counter = 0;
 
+
+reg [7:0] cache_reset_cntr;
+initial cache_reset_cntr = 0;
+
 always @(posedge i_clk) begin
     if (i_reset) begin // flush all cache
         current_state <= IDLE;
         cacheline_fill_counter <= 0;
-`ifndef FORMAL
-`ifndef VERILATOR
-        for (i=0; i<256; i=i+1)
-            cache_valid[i] <= 0;
-`endif
-`endif
+		  
+		  cache_valid[cache_reset_cntr] <= 0;
+		  cache_reset_cntr <= cache_reset_cntr + 1;
     end
     else if (current_state == IDLE && (!cache_hit) && (!i_wb_stall || !o_wb_cyc)) begin
         // Don't begin untill unstall

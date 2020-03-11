@@ -60,7 +60,7 @@ end
 // TL45 Opcodes
 localparam OP_ADD = 5'h1,
            OP_SUB = 5'h2,
-		   OP_MUL = 5'h3,
+		     OP_MUL = 5'h3,
            OP_OR  = 5'h6,
            OP_XOR = 5'h7,
            OP_AND = 5'h8,
@@ -170,11 +170,11 @@ div alu_div(i_clk, i_reset, div_wr, div_signed, i_sr1_val, i_sr2_val,
 
 
 wire [63:0] mul_result;
-// `ifndef VERILATOR
+`ifndef VERILATOR
 alu_mult_altera altera_mult(i_clk, i_sr1_val, i_sr2_val, mul_result);
-// `else
-// assign mul_result = i_sr1_val * i_sr2_val;
-// `endif
+`else
+assign mul_result = i_sr1_val * i_sr2_val;
+`endif
 
 // Main ALU
 always @(*) begin

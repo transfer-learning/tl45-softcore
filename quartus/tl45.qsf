@@ -213,6 +213,34 @@ set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING OFF
+set_location_assignment PIN_Y7 -to sdr_addr[12]
+set_global_assignment -name CRC_ERROR_OPEN_DRAIN OFF
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP "AS INPUT TRI-STATED"
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
+set_location_assignment PIN_K8 -to sdr_dqm[2]
+set_location_assignment PIN_N8 -to sdr_dqm[3]
+set_location_assignment PIN_U1 -to sdr_dq[31]
+set_location_assignment PIN_U4 -to sdr_dq[30]
+set_location_assignment PIN_T3 -to sdr_dq[29]
+set_location_assignment PIN_R3 -to sdr_dq[28]
+set_location_assignment PIN_R2 -to sdr_dq[27]
+set_location_assignment PIN_R1 -to sdr_dq[26]
+set_location_assignment PIN_R7 -to sdr_dq[25]
+set_location_assignment PIN_U5 -to sdr_dq[24]
+set_location_assignment PIN_L7 -to sdr_dq[23]
+set_location_assignment PIN_M7 -to sdr_dq[22]
+set_location_assignment PIN_M4 -to sdr_dq[21]
+set_location_assignment PIN_N4 -to sdr_dq[20]
+set_location_assignment PIN_N3 -to sdr_dq[19]
+set_location_assignment PIN_P2 -to sdr_dq[18]
+set_location_assignment PIN_L8 -to sdr_dq[17]
+set_location_assignment PIN_M8 -to sdr_dq[16]
+set_global_assignment -name VERILOG_FILE ../rtl/sdspi/spitxdata.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdspi/spirxdata.v
+set_global_assignment -name VERILOG_FILE ../rtl/sdspi/spicmd.v
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wb_iodevice/wbuart_with_buffer.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/wbuart_with_ihex/wbuart_with_ihex.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/ihex/wb_master_breakout.sv
@@ -260,29 +288,12 @@ set_global_assignment -name SDC_FILE tl45.sdc
 set_global_assignment -name QIP_FILE ../rtl/plls/main_pll.qip
 set_global_assignment -name QIP_FILE ../rtl/plls/dram_pll.qip
 set_global_assignment -name QIP_FILE ../rtl/lpm_mult/alu_mult_altera.qip
-set_location_assignment PIN_Y7 -to sdr_addr[12]
-set_global_assignment -name CRC_ERROR_OPEN_DRAIN OFF
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP "AS INPUT TRI-STATED"
-set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
-set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
-set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
-set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
-set_location_assignment PIN_K8 -to sdr_dqm[2]
-set_location_assignment PIN_N8 -to sdr_dqm[3]
-set_location_assignment PIN_U1 -to sdr_dq[31]
-set_location_assignment PIN_U4 -to sdr_dq[30]
-set_location_assignment PIN_T3 -to sdr_dq[29]
-set_location_assignment PIN_R3 -to sdr_dq[28]
-set_location_assignment PIN_R2 -to sdr_dq[27]
-set_location_assignment PIN_R1 -to sdr_dq[26]
-set_location_assignment PIN_R7 -to sdr_dq[25]
-set_location_assignment PIN_U5 -to sdr_dq[24]
-set_location_assignment PIN_L7 -to sdr_dq[23]
-set_location_assignment PIN_M7 -to sdr_dq[22]
-set_location_assignment PIN_M4 -to sdr_dq[21]
-set_location_assignment PIN_N4 -to sdr_dq[20]
-set_location_assignment PIN_N3 -to sdr_dq[19]
-set_location_assignment PIN_P2 -to sdr_dq[18]
-set_location_assignment PIN_L8 -to sdr_dq[17]
-set_location_assignment PIN_M8 -to sdr_dq[16]
+set_location_assignment PIN_AE13 -to sdc_o_sck
+set_location_assignment PIN_AE14 -to sdc_i_miso
+set_location_assignment PIN_AC14 -to sdc_o_cs
+set_location_assignment PIN_AD14 -to sdc_o_mosi
+set_location_assignment PIN_AC15 -to sd_rep_sck
+set_location_assignment PIN_Y17 -to sd_rep_cs
+set_location_assignment PIN_Y16 -to sd_rep_miso
+set_location_assignment PIN_AE16 -to sd_rep_mosi
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

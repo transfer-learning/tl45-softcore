@@ -1,0 +1,130 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sun Mar  8 03:16:42 2020
+[*]
+[dumpfile] "/home/codetector/projects/github.com/transfer-learning/tl45-softcore/verilator/cmake-build-debug/trace.vcd"
+[dumpfile_mtime] "Sat Mar  7 20:12:33 2020"
+[dumpfile_size] 3229893
+[savefile] "/home/codetector/projects/github.com/transfer-learning/tl45-softcore/verilator/gtkwave.gtkw"
+[timestart] 10990
+[size] 1276 1376
+[pos] -1 -1
+*-6.000000 11271 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.tl45_comp.
+[treeopen] TOP.tl45_comp.hexuart.
+[sst_width] 307
+[signals_width] 357
+[sst_expanded] 1
+[sst_vpaned_height] 423
+@28
+TOP.i_clk
+TOP.o_valid
+TOP.inst_decode_err
+@800200
+-fetch
+@22
+TOP.tl45_comp.fetch_buf_pc[31:0]
+TOP.tl45_comp.fetch_buf_inst[31:0]
+TOP.tl45_comp.fetch.current_pc[31:0]
+TOP.tl45_comp.fetch.next_o_buf_pc[31:0]
+TOP.tl45_comp.fetch.next_o_buf_inst[31:0]
+@28
+TOP.tl45_comp.fetch.cache_hit
+@1000200
+-fetch
+@800200
+-decode_input
+@22
+TOP.tl45_comp.decode.i_buf_inst[31:0]
+TOP.tl45_comp.decode.i_buf_pc[31:0]
+@28
+TOP.tl45_comp.decode.i_pipe_flush
+TOP.tl45_comp.decode.i_pipe_stall
+@1000200
+-decode_input
+@22
+TOP.tl45_comp.decode.opcode[4:0]
+@800200
+-decode_output
+@28
+TOP.tl45_comp.decode.o_decode_err
+@22
+TOP.tl45_comp.decode.o_buf_dr[3:0]
+TOP.tl45_comp.decode.o_buf_imm[31:0]
+TOP.tl45_comp.decode.o_buf_opcode[4:0]
+TOP.tl45_comp.decode.o_buf_pc[31:0]
+@28
+TOP.tl45_comp.decode.o_buf_ri
+@22
+TOP.tl45_comp.decode.o_buf_sr1[3:0]
+TOP.tl45_comp.decode.o_buf_sr2[3:0]
+@28
+TOP.tl45_comp.decode.o_pipe_flush
+TOP.tl45_comp.decode.o_pipe_stall
+@1000200
+-decode_output
+@800200
+-Master WB
+@28
+TOP.tl45_comp.master_o_wb_cyc
+TOP.tl45_comp.master_o_wb_stb
+@22
+TOP.tl45_comp.master_o_wb_addr[29:0]
+TOP.tl45_comp.master_o_wb_sel[3:0]
+TOP.tl45_comp.master_o_wb_data[31:0]
+@28
+TOP.tl45_comp.master_i_wb_ack
+@22
+TOP.tl45_comp.master_i_wb_data[31:0]
+@28
+TOP.tl45_comp.master_i_wb_err
+TOP.tl45_comp.master_i_wb_stall
+TOP.tl45_comp.master_o_wb_we
+@1000200
+-Master WB
+@800200
+-Uart WB
+@22
+TOP.tl45_comp.hexuart.uart_ctrlr.i_wb_addr[29:0]
+@28
+TOP.tl45_comp.hexuart.uart_ctrlr.i_wb_stb
+TOP.tl45_comp.hexuart.uart_ctrlr.i_wb_cyc
+TOP.tl45_comp.hexuart.uart_ctrlr.i_wb_we
+@22
+TOP.tl45_comp.hexuart.uart_ctrlr.i_wb_data[31:0]
+TOP.tl45_comp.hexuart.uart_ctrlr.i_wb_sel[3:0]
+@29
+TOP.tl45_comp.hexuart.uart_ctrlr.o_wb_ack
+@22
+TOP.tl45_comp.hexuart.uart_ctrlr.o_wb_data[31:0]
+@28
+TOP.tl45_comp.hexuart.uart_ctrlr.o_wb_err
+TOP.tl45_comp.hexuart.uart_ctrlr.o_wb_stall
+@22
+TOP.tl45_comp.hexuart.uart_ctrlr.wb_state[3:0]
+@1000200
+-Uart WB
+@c00200
+-Registers
+@22
+TOP.tl45_comp.dprf.registers(0)[31:0]
+TOP.tl45_comp.dprf.registers(1)[31:0]
+TOP.tl45_comp.dprf.registers(2)[31:0]
+TOP.tl45_comp.dprf.registers(3)[31:0]
+TOP.tl45_comp.dprf.registers(4)[31:0]
+TOP.tl45_comp.dprf.registers(5)[31:0]
+TOP.tl45_comp.dprf.registers(6)[31:0]
+TOP.tl45_comp.dprf.registers(7)[31:0]
+TOP.tl45_comp.dprf.registers(8)[31:0]
+TOP.tl45_comp.dprf.registers(9)[31:0]
+TOP.tl45_comp.dprf.registers(10)[31:0]
+TOP.tl45_comp.dprf.registers(11)[31:0]
+TOP.tl45_comp.dprf.registers(12)[31:0]
+TOP.tl45_comp.dprf.registers(13)[31:0]
+TOP.tl45_comp.dprf.registers(14)[31:0]
+TOP.tl45_comp.dprf.registers(15)[31:0]
+@1401200
+-Registers
+[pattern_trace] 1
+[pattern_trace] 0

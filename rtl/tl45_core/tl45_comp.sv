@@ -35,7 +35,12 @@ module tl45_comp(
     sdc_o_cs,
     sdc_o_sck,
     sdc_o_mosi,
-    sdc_i_miso
+    sdc_i_miso,
+	 
+	 sd_rep_cs,
+	 sd_rep_sck,
+	 sd_rep_mosi,
+	 sd_rep_miso
 );
     input i_sw16;
 	 
@@ -76,9 +81,12 @@ module tl45_comp(
     output	wire sdc_o_sck, sdc_o_mosi;
     input	wire sdc_i_miso;
     output wire sdc_o_cs;
-    wire sdc_o_cs_n;
-    assign sdc_o_cs = sdc_o_cs_n;
 	 
+	 output wire sd_rep_cs = sdc_o_cs;
+	 output wire sd_rep_sck = sdc_o_sck;
+	 output wire sd_rep_mosi = sdc_o_mosi;
+	 output wire sd_rep_miso = sdc_i_miso;
+
 	 // RESET
 `ifdef VERILATOR
 	 wire reset;
@@ -217,7 +225,6 @@ module tl45_comp(
     // Stages
 
     // tl45_prefetch
-	 wire [3:0] fetch_current_state;
     tl45_pfetch_with_cache fetch(
         .i_clk(i_clk),
         .i_reset(reset),
@@ -238,8 +245,7 @@ module tl45_comp(
         .i_wb_data(ifetch_i_wb_data),
 
         .o_buf_pc(fetch_buf_pc),
-        .o_buf_inst(fetch_buf_inst),
-        .current_state(fetch_current_state)
+        .o_buf_inst(fetch_buf_inst)
     );
 
     wire decode_decode_err;
@@ -476,13 +482,12 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 //
 // Define some wires for returning values to the bus from our various
 // components
-wire	[31:0] mem_data; // MEM
-wire    [31:0] sseg_data, sw_led_data, lcd_data, timer_data;
-wire	mem_stall, sseg_stall, sw_led_stall, lcd_stall, timer_stall;
-wire	mem_ack;
-wire    sseg_ack, sw_led_ack, lcd_ack, timer_ack;
+reg [31:0] wb_err_addr;
+wire [31:0] mem_data, sseg_data, sw_led_data, lcd_data, timer_data, sdc_data;
+wire	    mem_stall, sseg_stall, sw_led_stall, lcd_stall, timer_stall, sdc_stall;
+wire	    mem_ack, sseg_ack, sw_led_ack, lcd_ack, timer_ack, sdc_ack;
 
-wire	mem_sel, sseg_sel, sw_led_sel, lcd_sel, timer_sel;
+wire	    mem_sel, sseg_sel, sw_led_sel, lcd_sel, timer_sel, sdc_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -499,6 +504,7 @@ reg v_hook_stall;
 // 00 0000 0000 0000 0000 0000 0000 0000 00
 // 00 000x xxxx xxxx xxxx xxxx xxxx xxxx xx - DRAM 128 MB (0x0000_0000 -> 0x07ff_ffff)
 
+// 11 1111 1111 1111 1111 1111 1111 01xx xx - SDC    (16 Bytes) (0xFFFF_FFD0 -> 0xFFFF_FFDF)
 // 11 1111 1111 1111 1111 1111 1111 100x xx - LCD    (8 Bytes) (0xFFFF_FFE0 -> 0xFFFF_FFE7)
 // 11 1111 1111 1111 1111 1111 1111 1010 xx - SW/LED (4 Bytes) (0xFFFF_FFE8 -> 0xFFFF_FFEB)
 // 11 1111 1111 1111 1111 1111 1111 1011 xx - SSEG   (4 Bytes) (0xFFFF_FFEC -> 0xFFFF_FFEF)
@@ -509,6 +515,7 @@ reg v_hook_stall;
 assign	mem_sel     = (master_o_wb_addr[29:25] == 5'b00_000); // mem selected
 
 // MMIO
+assign sdc_sel      = (master_o_wb_addr[29:2] == 28'b11_1111_1111_1111_1111_1111_1111_01__); // LCD
 assign lcd_sel      = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_100_); // LCD
 assign sw_led_sel   = (master_o_wb_addr[29:0] == 30'b11_1111_1111_1111_1111_1111_1111_1010); // SWITCH LED
 assign sseg_sel     = (master_o_wb_addr[29:0] == 30'b11_1111_1111_1111_1111_1111_1111_1011); // SSEG
@@ -528,14 +535,23 @@ assign	none_sel =
     &&(!lcd_sel)
     && (!timer_sel)
     && (!uart_sel)
+    && (!sdc_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
     ;
 
 always @(posedge i_clk)
-    master_i_wb_err <= (master_o_wb_stb) && (none_sel);
-
+    if (reset)
+        master_i_wb_err <= 0;
+    else
+        master_i_wb_err <= (master_o_wb_stb) && (none_sel);
+always @(posedge i_clk)
+	if (reset)
+		wb_err_addr <= 32'h0;
+	else if (master_i_wb_err || master_i_wb_stall)
+		wb_err_addr <= {master_o_wb_addr, 2'h0};
+		  
 // Master Bus Respond
 always @(posedge i_clk)
     master_i_wb_ack <=
@@ -545,6 +561,7 @@ always @(posedge i_clk)
         || lcd_ack
         || timer_ack
         || uart_ack
+		  || sdc_ack
 `ifdef VERILATOR
         || v_hook_ack
 `endif
@@ -568,6 +585,8 @@ always @(posedge i_clk)
         master_i_wb_data <= timer_data;
     else if (uart_ack)
         master_i_wb_data <= uart_data;
+    else if (sdc_ack)
+        master_i_wb_data <= sdc_data;
     else
         master_i_wb_data <= 32'h0;
 
@@ -577,7 +596,34 @@ assign	master_i_wb_stall =
         || lcd_sel && lcd_stall
         || sw_led_sel && sw_led_stall
         || timer_sel && timer_stall
-        || uart_sel && uart_stall;
+        || uart_sel && uart_stall
+        || sdc_sel && sdc_stall;
+
+
+wire sd_int;
+wire [31:0] sddbg;
+// Wishbone SDCard
+sdspi #(
+    .OPT_CARD_DETECT(1'b0),
+    .OPT_SPI_ARBITRATION(1'b0)
+)
+sdcard(
+    .i_clk(i_clk), 
+    .i_sd_reset(reset),
+	 .i_wb_cyc(master_o_wb_cyc), .i_wb_stb(master_o_wb_stb && sdc_sel), 
+    .i_wb_we(master_o_wb_we), .i_wb_addr(master_o_wb_addr[1:0]), 
+    .i_wb_data(master_o_wb_data), .i_wb_sel(master_o_wb_sel),
+	 .o_wb_stall(sdc_stall), .o_wb_ack(sdc_ack),
+    .o_wb_data(sdc_data),
+    // SDCard interface
+    .o_cs_n(sdc_o_cs), .o_sck(sdc_o_sck), .o_mosi(sdc_o_mosi), .i_miso(sdc_i_miso),
+    .i_card_detect(1'b1),
+    // Our interrupt
+    .o_int(sd_int),
+    // And whether or not we own the bus
+    .i_bus_grant(1'b1),
+    // And some wires for debugging it all
+    .o_debug(sddbg));
 
 
 // Wishbone Timer
@@ -607,8 +653,8 @@ wb_sevenseg sevenseg_disp(
 `ifndef VERILATOR
     ssegs,
 `endif
-    rr_buf_pc,
-    inst_decode_err || i_sw16
+    (i_sw16 && inst_decode_err) ? fetch_buf_inst : rr_buf_pc,
+    i_sw16 || inst_decode_err
 );
 
 // LCDHD47780
@@ -650,12 +696,12 @@ wb_switch_led de2_switch_led(
 );
 
 `ifdef VERILATOR
-    memdev #(16) my_mem(
+    memdev #(20) my_mem(
         .i_clk(i_clk),
         .i_wb_cyc(ibus_o_wb_cyc),
         .i_wb_stb(ibus_o_wb_stb && mem_sel),
         .i_wb_we(ibus_o_wb_we),
-        .i_wb_addr(ibus_o_wb_addr[15-2:0]),
+        .i_wb_addr(ibus_o_wb_addr[19-2:0]),
         .i_wb_data(ibus_o_wb_data),
         .i_wb_sel(ibus_o_wb_sel),
 
@@ -697,9 +743,13 @@ wb_switch_led de2_switch_led(
 
 `endif
 
-`ifndef VERILATOR
-
-wbuart_with_ihex hexuart
+wbuart_with_ihex 
+ `ifdef VERILATOR
+#(
+        .BAUD_RATE(10000000)
+)
+    `endif
+hexuart
 (
     i_clk, reset,
     i_uart, o_uart,
@@ -715,7 +765,6 @@ wbuart_with_ihex hexuart
     master_o_wb_addr, master_o_wb_data, uart_data
 );
 
-`endif
 endmodule : tl45_comp
 
 

@@ -61,12 +61,18 @@ assign mode = {ri, lh, zs};
 
 reg [31:0] resolved_imm;
 
-always @(*)
+always @(*) begin
+	if (opcode == 5'h0C || opcode == 5'h0D) begin
+		resolved_imm = {16'b0, imm};
+	end
+	else begin
     case ({lh, zs})
         2'b00: resolved_imm = {16'b0, imm};
         2'b01: resolved_imm = {{16{imm[15]}}, imm};
         default: resolved_imm = {imm, 16'b0}; // lh = 1
     endcase
+	end
+end
 
 wire sr2_force_sp;
 assign sr2_force_sp = (opcode == 5'h0D) || (opcode == 5'h0E); // CALL and RET require sr2 == sp
@@ -104,7 +110,7 @@ always @(*)
         5'h0A: decode_err = ri ? (imm >= 32) : mode != 0;               //  SHL
         5'h0B: decode_err = ri ? (imm >= 32) : mode != 0;               //  SHR
 
-        5'h0C: decode_err = (mode != 3'b101);                           //  JMP
+        5'h0C: decode_err = (mode != 3'b101) && (mode != 3'b100);       //  JMP
         5'h0D: decode_err = (mode != 3'b000);                           // CALL
         5'h0E: decode_err = (mode != 3'b000) || (dr != 4'b1111)         //  RET 
                                || (sr1 != 0) || (imm != 0);

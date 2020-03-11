@@ -119,6 +119,8 @@ void load_memory(Vtl45_comp *core, const std::vector<uint32_t> &words) {
   for (size_t i = 0; i < words.size(); i++) {
     ram[i] = words[i];
   }
+
+  printf("Word at 0xFFFC is 0x%08X", ram[0xFFFCU >> 2U]);
 }
 
 std::vector<uint32_t> read_expected(const std::string &file) {
@@ -213,9 +215,9 @@ std::string to_string(const std::vector<uint32_t> &vec) {
 
 int main(int argc, char **argv) {
   Verilated::commandArgs(argc, argv);
-  TESTBENCH<Vtl45_comp> *tb = new TESTBENCH<Vtl45_comp>();
+  auto *tb = new TESTBENCH<Vtl45_comp>();
 
-  // auto &ram = tb->m_core->tl45_comp__DOT__my_mem__DOT__mem;
+   auto &ram = tb->m_core->tl45_comp__DOT__my_mem__DOT__mem;
 #define LOAD
 #ifdef LOAD
 
@@ -279,23 +281,23 @@ int main(int argc, char **argv) {
 
   CData unused;
 
-  WB_Bus bus(
-      tb->m_core->tl45_comp__DOT__master_o_wb_cyc,
-      tb->m_core->tl45_comp__DOT__v_hook_stb,
-      tb->m_core->tl45_comp__DOT__master_o_wb_we,
-      tb->m_core->tl45_comp__DOT__master_o_wb_addr,
-      tb->m_core->tl45_comp__DOT__master_o_wb_data,
-      tb->m_core->tl45_comp__DOT__v_hook_ack,
-      unused,
-      tb->m_core->tl45_comp__DOT__v_hook_data
-  );
-
-  SerialDevice s(bus);
-
+//  WB_Bus bus(
+//      tb->m_core->tl45_comp__DOT__master_o_wb_cyc,
+//      tb->m_core->tl45_comp__DOT__v_hook_stb,
+//      tb->m_core->tl45_comp__DOT__master_o_wb_we,
+//      tb->m_core->tl45_comp__DOT__master_o_wb_addr,
+//      tb->m_core->tl45_comp__DOT__master_o_wb_data,
+//      tb->m_core->tl45_comp__DOT__v_hook_ack,
+//      unused,
+//      tb->m_core->tl45_comp__DOT__v_hook_data
+//  );
+//
+//  SerialDevice s(bus);
+//
   while (!tb->done() && (!(DO_TRACE) || tb->m_tickcount < 100 * 20)) {
     tb->tick();
 
-    s.eval();
+//    s.eval();
 
 #if DO_TRACE
     if (tb->m_tickcount % 10 == 0 && 0) {

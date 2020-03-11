@@ -300,7 +300,7 @@ always @(posedge i_clk) begin
         current_state <= current_state == READ_STROBE ? READ_WAIT_ACK : WRITE_WAIT_ACK;
         o_wb_addr <= 0;
 
-        o_wb_data <= 0;
+        o_wb_data <= 0;// Err could be here LOL
     end
     // TODO probably not correct when wb response is on the same clock as the
     // request.

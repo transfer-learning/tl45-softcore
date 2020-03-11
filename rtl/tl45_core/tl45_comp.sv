@@ -40,7 +40,14 @@ module tl45_comp(
 	 sd_rep_cs,
 	 sd_rep_sck,
 	 sd_rep_mosi,
-	 sd_rep_miso
+	 sd_rep_miso,
+
+    o_vga_hsync,
+    o_vga_vsync,
+    o_vga_blank,
+    o_vga_sync,
+    o_vga_clk,
+    o_vga_r, o_vga_g, o_vga_b
 );
     input i_sw16;
 	 
@@ -82,10 +89,14 @@ module tl45_comp(
     input	wire sdc_i_miso;
     output wire sdc_o_cs;
 	 
-	 output wire sd_rep_cs = sdc_o_cs;
-	 output wire sd_rep_sck = sdc_o_sck;
-	 output wire sd_rep_mosi = sdc_o_mosi;
-	 output wire sd_rep_miso = sdc_i_miso;
+    output wire sd_rep_cs = sdc_o_cs;
+    output wire sd_rep_sck = sdc_o_sck;
+    output wire sd_rep_mosi = sdc_o_mosi;
+    output wire sd_rep_miso = sdc_i_miso;
+
+    // VGA
+    output wire o_vga_blank, o_vga_hsync, o_vga_vsync, o_vga_sync, o_vga_clk;
+    output wire [7:0] o_vga_r, o_vga_g, o_vga_b;
 
 	 // RESET
 `ifdef VERILATOR
@@ -485,9 +496,9 @@ wbpriarbiter #(32, 30) mbus_arbiter(
 reg [31:0] wb_err_addr;
 wire [31:0] mem_data, sseg_data, sw_led_data, lcd_data, timer_data, sdc_data;
 wire	    mem_stall, sseg_stall, sw_led_stall, lcd_stall, timer_stall, sdc_stall;
-wire	    mem_ack, sseg_ack, sw_led_ack, lcd_ack, timer_ack, sdc_ack;
+wire	    mem_ack, sseg_ack, sw_led_ack, lcd_ack, timer_ack, sdc_ack, vga_ack;
 
-wire	    mem_sel, sseg_sel, sw_led_sel, lcd_sel, timer_sel, sdc_sel;
+wire	    mem_sel, sseg_sel, sw_led_sel, lcd_sel, timer_sel, sdc_sel, vga_sel;
 
 `ifdef VERILATOR
 reg	    [31:0]	v_hook_data; // Simple Device
@@ -503,7 +514,7 @@ reg v_hook_stall;
 //
 // 00 0000 0000 0000 0000 0000 0000 0000 00
 // 00 000x xxxx xxxx xxxx xxxx xxxx xxxx xx - DRAM 128 MB (0x0000_0000 -> 0x07ff_ffff)
-
+// 11 1111 1111 1110 xxxx xxxx xxxx xxxx xx - VGA Controller (0xFFF8_0000 --> 0xFFFB_0000)
 // 11 1111 1111 1111 1111 1111 1111 01xx xx - SDC    (16 Bytes) (0xFFFF_FFD0 -> 0xFFFF_FFDF)
 // 11 1111 1111 1111 1111 1111 1111 100x xx - LCD    (8 Bytes) (0xFFFF_FFE0 -> 0xFFFF_FFE7)
 // 11 1111 1111 1111 1111 1111 1111 1010 xx - SW/LED (4 Bytes) (0xFFFF_FFE8 -> 0xFFFF_FFEB)
@@ -515,11 +526,12 @@ reg v_hook_stall;
 assign	mem_sel     = (master_o_wb_addr[29:25] == 5'b00_000); // mem selected
 
 // MMIO
-assign sdc_sel      = (master_o_wb_addr[29:2] == 28'b11_1111_1111_1111_1111_1111_1111_01__); // LCD
-assign lcd_sel      = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_100_); // LCD
-assign sw_led_sel   = (master_o_wb_addr[29:0] == 30'b11_1111_1111_1111_1111_1111_1111_1010); // SWITCH LED
-assign sseg_sel     = (master_o_wb_addr[29:0] == 30'b11_1111_1111_1111_1111_1111_1111_1011); // SSEG
-assign timer_sel    = (master_o_wb_addr[29:1] == 29'b11_1111_1111_1111_1111_1111_1111_110_);
+assign vga_sel      = (master_o_wb_addr[29:16] == 14'b11_1111_1111_1110);
+assign sdc_sel      = (master_o_wb_addr[29:2 ] == 28'b11_1111_1111_1111_1111_1111_1111_01__); // SDC
+assign lcd_sel      = (master_o_wb_addr[29:1 ] == 29'b11_1111_1111_1111_1111_1111_1111_100_); // LCD
+assign sw_led_sel   = (master_o_wb_addr[29:0 ] == 30'b11_1111_1111_1111_1111_1111_1111_1010); // SWITCH LED
+assign sseg_sel     = (master_o_wb_addr[29:0 ] == 30'b11_1111_1111_1111_1111_1111_1111_1011); // SSEG
+assign timer_sel    = (master_o_wb_addr[29:1 ] == 29'b11_1111_1111_1111_1111_1111_1111_110_);
 // UART
 wire uart_sel;
 assign uart_sel = (master_o_wb_addr[29:1] ==  29'b11_1111_1111_1111_1111_1111_1111_111);
@@ -536,6 +548,7 @@ assign	none_sel =
     && (!timer_sel)
     && (!uart_sel)
     && (!sdc_sel)
+    && (!vga_sel)
 `ifdef VERILATOR
     && (!v_hook_stb)
 `endif
@@ -561,7 +574,8 @@ always @(posedge i_clk)
         || lcd_ack
         || timer_ack
         || uart_ack
-		  || sdc_ack
+        || sdc_ack
+        || vga_ack
 `ifdef VERILATOR
         || v_hook_ack
 `endif
@@ -693,6 +707,33 @@ wb_switch_led de2_switch_led(
     sw_led_data,
     o_leds,
     i_switches
+);
+
+wire vga_blank;
+assign o_vga_sync = ~(o_vga_hsync | o_vga_vsync);
+assign o_vga_blank = ~vga_blank;
+
+wire vga_clk_25_125;
+assign o_vga_clk = vga_clk_25_125;
+vga_pll vga_clk_source(i_clk, vga_clk_25_125);
+
+wb_vga vga_controller (
+    .i_clk,
+    .i_clk_25_125(vga_clk_25_125),
+    .i_reset(reset),
+    .i_wb_cyc(master_o_wb_cyc),
+    .i_wb_stb(master_o_wb_stb && vga_sel),
+    .i_wb_we(master_o_wb_we),
+    .i_wb_addr(master_o_wb_addr[15:0]),
+    .i_wb_data(master_o_wb_addr),
+    .i_wb_sel(master_o_wb_sel),
+    .o_wb_ack(vga_ack),
+    .o_r(o_vga_r), 
+    .o_g(o_vga_g),
+    .o_b(o_vga_b),
+    .o_hsync(o_vga_hsync), 
+    .o_vsync(o_vga_vsync),
+    .o_blank(vga_blank)
 );
 
 `ifdef VERILATOR
